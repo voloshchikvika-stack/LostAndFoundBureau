@@ -52,6 +52,18 @@ namespace LostAndFound.Match3
             "Лупа"
         };
 
+        // Если в Assets/Resources/Match3/Pieces лежат PNG с этими именами,
+        // игра автоматически использует их вместо встроенных временных иконок.
+        private readonly string[] pieceResourceNames =
+        {
+            "Footprints",
+            "Key",
+            "Map",
+            "Note",
+            "Tag",
+            "Magnifier"
+        };
+
         private readonly Color[] palette =
         {
             new Color(0.95f, 0.35f, 0.42f),
@@ -99,7 +111,22 @@ namespace LostAndFound.Match3
             pieceTextures = new Texture2D[palette.Length];
 
             for (int i = 0; i < palette.Length; i++)
-                pieceSprites[i] = Match3VisualFactory.CreateTokenSprite(palette[i], i, out pieceTextures[i]);
+            {
+                Sprite customPiece = Resources.Load<Sprite>($"Match3/Pieces/{pieceResourceNames[i]}");
+
+                if (customPiece != null)
+                {
+                    pieceSprites[i] = customPiece;
+                    pieceTextures[i] = customPiece.texture;
+                }
+                else
+                {
+                    pieceSprites[i] = Match3VisualFactory.CreateTokenSprite(
+                        palette[i],
+                        i,
+                        out pieceTextures[i]);
+                }
+            }
 
             hudCardTexture = Match3VisualFactory.CreateRoundedTexture(
                 new Color(0.10f, 0.15f, 0.22f, 0.94f), 64, 16);
