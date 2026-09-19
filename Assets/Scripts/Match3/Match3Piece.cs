@@ -23,7 +23,12 @@ namespace LostAndFound.Match3
             spriteRenderer.color = color;
             spriteRenderer.sortingOrder = 1;
 
-            baseScale = Vector3.one * size;
+            float spriteWidth = Mathf.Max(0.001f, sprite.bounds.size.x);
+            float spriteHeight = Mathf.Max(0.001f, sprite.bounds.size.y);
+            float largestSide = Mathf.Max(spriteWidth, spriteHeight);
+
+            float normalizedScale = size / largestSide;
+            baseScale = Vector3.one * normalizedScale;
             transform.localScale = baseScale;
         }
 
