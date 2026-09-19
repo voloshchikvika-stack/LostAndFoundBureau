@@ -6,6 +6,7 @@ namespace LostAndFound.Match3
     public class Match3Piece : MonoBehaviour
     {
         private SpriteRenderer spriteRenderer;
+        private Vector3 baseScale;
 
         public int Type { get; private set; }
         public int Column { get; private set; }
@@ -22,7 +23,8 @@ namespace LostAndFound.Match3
             spriteRenderer.color = color;
             spriteRenderer.sortingOrder = 1;
 
-            transform.localScale = Vector3.one * size;
+            baseScale = Vector3.one * size;
+            transform.localScale = baseScale;
         }
 
         public void SetCoordinates(int column, int row)
@@ -36,7 +38,7 @@ namespace LostAndFound.Match3
             if (spriteRenderer != null)
                 spriteRenderer.sortingOrder = selected ? 5 : 1;
 
-            transform.localScale = Vector3.one * (selected ? 1.0f : 0.86f);
+            transform.localScale = selected ? baseScale * 1.10f : baseScale;
         }
 
         public IEnumerator MoveTo(Vector3 target, float duration)
