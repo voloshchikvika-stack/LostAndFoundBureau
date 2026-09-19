@@ -24,7 +24,8 @@ namespace LostAndFound.Match3
 
         private Match3Piece[,] pieces;
         private Match3Piece selectedPiece;
-        private Sprite pieceSprite;
+        private Sprite[] pieceSprites;
+        private Texture2D[] pieceTextures;
         private Camera mainCamera;
         private bool inputLocked;
         private bool gameEnded;
@@ -32,6 +33,24 @@ namespace LostAndFound.Match3
         private int score;
         private int moves;
         private int collectedTarget;
+
+        private Texture2D hudCardTexture;
+        private Texture2D hudCardStrongTexture;
+        private Texture2D overlayTexture;
+        private Texture2D resultCardTexture;
+        private Texture2D boardPanelTexture;
+        private GameObject runtimeBackground;
+        private GameObject runtimeBoardPanel;
+
+        private readonly string[] pieceNames =
+        {
+            "Следы",
+            "Ключ",
+            "Карта",
+            "Записка",
+            "Бирка",
+            "Лупа"
+        };
 
         private readonly Color[] palette =
         {
@@ -50,10 +69,11 @@ namespace LostAndFound.Match3
         private void Start()
         {
             pieces = new Match3Piece[width, height];
-            pieceSprite = CreateSquareSprite();
-
             targetType = Mathf.Clamp(targetType, 0, palette.Length - 1);
+
+            DisablePrototypeCanvas();
             ConfigureCamera();
+            CreateRuntimeVisuals();
             CreateBoardWithoutStartingMatches();
         }
 
@@ -64,6 +84,92 @@ namespace LostAndFound.Match3
 
             if (TryGetPointerDown(out Vector2 screenPosition))
                 HandlePointer(screenPosition);
+        }
+
+        private void DisablePrototypeCanvas()
+        {
+            GameObject prototypeCanvas = GameObject.Find("Canvas");
+            if (prototypeCanvas != null)
+                prototypeCanvas.SetActive(false);
+        }
+
+        private void CreateRuntimeVisuals()
+        {
+            pieceSprites = new Sprite[palette.Length];
+            pieceTextures = new Texture2D[palette.Length];
+
+            for (int i = 0; i < palette.Length; i++)
+                pieceSprites[i] = Match3VisualFactory.CreateTokenSprite(palette[i], i, out pieceTextures[i]);
+
+            hudCardTexture = Match3VisualFactory.CreateRoundedTexture(
+                new Color(0.10f, 0.15f, 0.22f, 0.94f), 64, 16);
+
+            hudCardStrongTexture = Match3VisualFactory.CreateRoundedTexture(
+                new Color(0.16f, 0.23f, 0.32f, 0.98f), 64, 16);
+
+            resultCardTexture = Match3VisualFactory.CreateRoundedTexture(
+                new Color(0.10f, 0.15f, 0.22f, 0.98f), 96, 24);
+
+            overlayTexture = Match3VisualFactory.CreateSolidTexture(
+                new Color(0.01f, 0.02f, 0.035f, 0.68f));
+
+            boardPanelTexture = Match3VisualFactory.CreateSolidTexture(
+                new Color(0.03f, 0.05f, 0.08f, 0.52f));
+
+            CreateBackground();
+            CreateBoardPanel();
+        }
+
+        private void CreateBackground()
+        {
+            runtimeBackground = new GameObject("RuntimeBackground");
+            SpriteRenderer renderer = runtimeBackground.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = -100;
+
+            Sprite customBackground = Resources.Load<Sprite>("Match3/Background");
+            Sprite backgroundSprite;
+
+            if (customBackground != null)
+            {
+                backgroundSprite = customBackground;
+            }
+            else
+            {
+                backgroundSprite = Match3VisualFactory.CreateGradientBackgroundSprite(out _);
+            }
+
+            renderer.sprite = backgroundSprite;
+            runtimeBackground.transform.position = new Vector3(0f, 0f, 5f);
+
+            float visibleHeight = mainCamera.orthographicSize * 2f;
+            float visibleWidth = visibleHeight * mainCamera.aspect;
+
+            Vector2 spriteSize = backgroundSprite.bounds.size;
+            float scale = Mathf.Max(
+                visibleWidth / Mathf.Max(0.01f, spriteSize.x),
+                visibleHeight / Mathf.Max(0.01f, spriteSize.y));
+
+            runtimeBackground.transform.localScale = Vector3.one * scale;
+        }
+
+        private void CreateBoardPanel()
+        {
+            runtimeBoardPanel = new GameObject("BoardPanel");
+            SpriteRenderer renderer = runtimeBoardPanel.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = -10;
+
+            Sprite panelSprite = Sprite.Create(
+                boardPanelTexture,
+                new Rect(0f, 0f, 1f, 1f),
+                new Vector2(0.5f, 0.5f),
+                1f);
+
+            renderer.sprite = panelSprite;
+            runtimeBoardPanel.transform.position = new Vector3(0f, 0f, 1f);
+            runtimeBoardPanel.transform.localScale = new Vector3(
+                width * cellSize + 0.7f,
+                height * cellSize + 0.7f,
+                1f);
         }
 
         private bool TryGetPointerDown(out Vector2 screenPosition)
@@ -417,7 +523,7 @@ namespace LostAndFound.Match3
             pieceObject.transform.position = position;
 
             Match3Piece piece = pieceObject.AddComponent<Match3Piece>();
-            piece.Initialize(type, column, row, pieceSprite, palette[type], cellSize * 0.86f);
+            piece.Initialize(type, column, row, pieceSprites[type], Color.white, cellSize * 0.86f);
 
             return piece;
         }
@@ -449,94 +555,117 @@ namespace LostAndFound.Match3
 
             mainCamera.orthographic = true;
             mainCamera.transform.position = new Vector3(0f, 0f, -10f);
-            mainCamera.orthographicSize = height * cellSize * 0.65f;
-            mainCamera.backgroundColor = new Color(0.08f, 0.10f, 0.16f);
-        }
-
-        private Sprite CreateSquareSprite()
-        {
-            Texture2D texture = new Texture2D(1, 1);
-            texture.name = "Match3RuntimeSprite";
-            texture.SetPixel(0, 0, Color.white);
-            texture.Apply();
-            texture.filterMode = FilterMode.Point;
-            texture.wrapMode = TextureWrapMode.Clamp;
-
-            return Sprite.Create(
-                texture,
-                new Rect(0f, 0f, 1f, 1f),
-                new Vector2(0.5f, 0.5f),
-                1f);
+            mainCamera.orthographicSize = height * cellSize * 0.66f;
+            mainCamera.backgroundColor = new Color(0.035f, 0.055f, 0.085f);
         }
 
         private void OnGUI()
         {
-            float uiScale = Mathf.Max(1f, Screen.height / 1080f);
-
-            GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = Mathf.RoundToInt(26 * uiScale),
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white }
-            };
-
-            GUIStyle infoStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = Mathf.RoundToInt(18 * uiScale),
-                normal = { textColor = new Color(0.9f, 0.92f, 0.96f) }
-            };
-
-            GUIStyle resultStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = Mathf.RoundToInt(34 * uiScale),
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = Color.white }
-            };
-
-            float x = 20 * uiScale;
-            float y = 18 * uiScale;
-            float line = 34 * uiScale;
-
-            GUI.Label(new Rect(x, y, 700 * uiScale, 48 * uiScale),
-                "Бюро потерянных вещей — Match-3", titleStyle);
-
-            GUI.Label(new Rect(x, y + line * 1.4f, 350 * uiScale, 32 * uiScale),
-                $"Счёт: {score}", infoStyle);
-
-            GUI.Label(new Rect(x, y + line * 2.3f, 350 * uiScale, 32 * uiScale),
-                $"Ходы: {MovesLeft}/{maxMoves}", infoStyle);
-
-            Color oldColor = GUI.color;
-            GUI.color = palette[targetType];
-            GUI.Box(new Rect(x, y + line * 3.4f, 28 * uiScale, 28 * uiScale), GUIContent.none);
-            GUI.color = oldColor;
-
-            GUI.Label(new Rect(x + 38 * uiScale, y + line * 3.25f, 500 * uiScale, 34 * uiScale),
-                $"Цель: собрать {targetCount} красных — {Mathf.Min(collectedTarget, targetCount)}/{targetCount}",
-                infoStyle);
-
-            GUI.Label(new Rect(x, Screen.height - 54 * uiScale, 820 * uiScale, 34 * uiScale),
-                "Нажми на две соседние фишки. Совпадения 3+ исчезают.", infoStyle);
-
-            if (!gameEnded)
+            if (hudCardTexture == null || pieceTextures == null)
                 return;
 
-            string message = levelWon
-                ? "ДЕЛО ПРОДВИНУЛОСЬ! УЛИКА ПОЛУЧЕНА"
-                : "ХОДЫ ЗАКОНЧИЛИСЬ";
+            float scale = Mathf.Min(Screen.width / 1920f, Screen.height / 1080f);
+            scale = Mathf.Clamp(scale, 0.65f, 2.5f);
 
-            GUI.Box(new Rect(
-                Screen.width * 0.5f - 360 * uiScale,
-                Screen.height * 0.5f - 70 * uiScale,
-                720 * uiScale,
-                140 * uiScale), GUIContent.none);
+            GUIStyle titleStyle = CreateLabelStyle(17, FontStyle.Normal, TextAnchor.UpperCenter, scale);
+            titleStyle.normal.textColor = new Color(0.75f, 0.80f, 0.88f);
 
-            GUI.Label(new Rect(
-                Screen.width * 0.5f - 340 * uiScale,
-                Screen.height * 0.5f - 52 * uiScale,
-                680 * uiScale,
-                104 * uiScale), message, resultStyle);
+            GUIStyle valueStyle = CreateLabelStyle(34, FontStyle.Bold, TextAnchor.MiddleCenter, scale);
+            GUIStyle goalValueStyle = CreateLabelStyle(26, FontStyle.Bold, TextAnchor.MiddleLeft, scale);
+            GUIStyle goalTitleStyle = CreateLabelStyle(15, FontStyle.Normal, TextAnchor.MiddleLeft, scale);
+            goalTitleStyle.normal.textColor = new Color(0.75f, 0.80f, 0.88f);
+
+            float cardHeight = 92f * scale;
+            float movesWidth = 190f * scale;
+            float goalWidth = 330f * scale;
+            float scoreWidth = 190f * scale;
+            float gap = 16f * scale;
+            float totalWidth = movesWidth + goalWidth + scoreWidth + gap * 2f;
+            float startX = (Screen.width - totalWidth) * 0.5f;
+            float y = 22f * scale;
+
+            Rect movesRect = new Rect(startX, y, movesWidth, cardHeight);
+            Rect goalRect = new Rect(startX + movesWidth + gap, y, goalWidth, cardHeight);
+            Rect scoreRect = new Rect(startX + movesWidth + gap + goalWidth + gap, y, scoreWidth, cardHeight);
+
+            DrawCard(movesRect, hudCardTexture);
+            DrawCard(goalRect, hudCardStrongTexture);
+            DrawCard(scoreRect, hudCardTexture);
+
+            GUI.Label(new Rect(movesRect.x, movesRect.y + 7f * scale, movesRect.width, 22f * scale), "ХОДЫ", titleStyle);
+            GUI.Label(new Rect(movesRect.x, movesRect.y + 26f * scale, movesRect.width, 55f * scale), MovesLeft.ToString(), valueStyle);
+
+            float iconSize = 58f * scale;
+            Rect iconRect = new Rect(goalRect.x + 18f * scale, goalRect.y + 17f * scale, iconSize, iconSize);
+            GUI.DrawTexture(iconRect, pieceTextures[targetType], ScaleMode.ScaleToFit, true);
+
+            GUI.Label(
+                new Rect(goalRect.x + 88f * scale, goalRect.y + 16f * scale, goalRect.width - 102f * scale, 25f * scale),
+                $"ЦЕЛЬ · {pieceNames[targetType]}",
+                goalTitleStyle);
+
+            GUI.Label(
+                new Rect(goalRect.x + 88f * scale, goalRect.y + 36f * scale, goalRect.width - 102f * scale, 42f * scale),
+                $"{Mathf.Min(collectedTarget, targetCount)} / {targetCount}",
+                goalValueStyle);
+
+            GUI.Label(new Rect(scoreRect.x, scoreRect.y + 7f * scale, scoreRect.width, 22f * scale), "СЧЁТ", titleStyle);
+            GUI.Label(new Rect(scoreRect.x, scoreRect.y + 26f * scale, scoreRect.width, 55f * scale), score.ToString(), valueStyle);
+
+            if (gameEnded)
+                DrawResultOverlay(scale);
+        }
+
+        private GUIStyle CreateLabelStyle(int fontSize, FontStyle fontStyle, TextAnchor alignment, float scale)
+        {
+            GUIStyle style = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(fontSize * scale),
+                fontStyle = fontStyle,
+                alignment = alignment
+            };
+
+            style.normal.textColor = Color.white;
+            return style;
+        }
+
+        private void DrawCard(Rect rect, Texture2D texture)
+        {
+            GUI.DrawTexture(rect, texture, ScaleMode.StretchToFill, true);
+        }
+
+        private void DrawResultOverlay(float scale)
+        {
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture, ScaleMode.StretchToFill);
+
+            float width = 600f * scale;
+            float height = 250f * scale;
+            Rect card = new Rect(
+                Screen.width * 0.5f - width * 0.5f,
+                Screen.height * 0.5f - height * 0.5f,
+                width,
+                height);
+
+            DrawCard(card, resultCardTexture);
+
+            GUIStyle badgeStyle = CreateLabelStyle(17, FontStyle.Bold, TextAnchor.MiddleCenter, scale);
+            badgeStyle.normal.textColor = levelWon
+                ? new Color(0.55f, 0.94f, 0.68f)
+                : new Color(1f, 0.66f, 0.55f);
+
+            GUIStyle headingStyle = CreateLabelStyle(34, FontStyle.Bold, TextAnchor.MiddleCenter, scale);
+            GUIStyle bodyStyle = CreateLabelStyle(19, FontStyle.Normal, TextAnchor.MiddleCenter, scale);
+            bodyStyle.normal.textColor = new Color(0.78f, 0.82f, 0.88f);
+
+            string badge = levelWon ? "ДЕЛО ПРОДВИНУЛОСЬ" : "ПОПРОБУЕМ ЕЩЁ РАЗ";
+            string heading = levelWon ? "Улика получена" : "Ходы закончились";
+            string body = levelWon
+                ? "Следы привели нас к новой зацепке."
+                : "Нужно собрать цель до окончания ходов.";
+
+            GUI.Label(new Rect(card.x, card.y + 30f * scale, card.width, 28f * scale), badge, badgeStyle);
+            GUI.Label(new Rect(card.x + 20f * scale, card.y + 72f * scale, card.width - 40f * scale, 55f * scale), heading, headingStyle);
+            GUI.Label(new Rect(card.x + 36f * scale, card.y + 142f * scale, card.width - 72f * scale, 54f * scale), body, bodyStyle);
         }
     }
 }
