@@ -12,6 +12,11 @@ namespace LostAndFound.Match3
         [SerializeField] private int height = 8;
         [SerializeField] private float cellSize = 1.05f;
 
+        [Header("Level Goal")]
+        [SerializeField] private int maxMoves = 20;
+        [SerializeField] private int targetType = 0;
+        [SerializeField] private int targetCount = 15;
+
         [Header("Timing")]
         [SerializeField] private float swapDuration = 0.16f;
         [SerializeField] private float fallDuration = 0.18f;
@@ -22,8 +27,11 @@ namespace LostAndFound.Match3
         private Sprite pieceSprite;
         private Camera mainCamera;
         private bool inputLocked;
+        private bool gameEnded;
+        private bool levelWon;
         private int score;
         private int moves;
+        private int collectedTarget;
 
         private readonly Color[] palette =
         {
@@ -37,19 +45,21 @@ namespace LostAndFound.Match3
 
         private float StartX => -(width - 1) * cellSize * 0.5f;
         private float StartY => -(height - 1) * cellSize * 0.5f;
+        private int MovesLeft => Mathf.Max(0, maxMoves - moves);
 
         private void Start()
         {
             pieces = new Match3Piece[width, height];
             pieceSprite = CreateSquareSprite();
 
+            targetType = Mathf.Clamp(targetType, 0, palette.Length - 1);
             ConfigureCamera();
             CreateBoardWithoutStartingMatches();
         }
 
         private void Update()
         {
-            if (inputLocked)
+            if (inputLocked || gameEnded)
                 return;
 
             if (TryGetPointerDown(out Vector2 screenPosition))
@@ -154,6 +164,7 @@ namespace LostAndFound.Match3
 
             moves++;
             yield return ResolveBoard(matches);
+            CheckEndConditions();
             inputLocked = false;
         }
 
@@ -204,7 +215,27 @@ namespace LostAndFound.Match3
                     pieces[column, row] = null;
 
                 score += 100;
+
+                if (piece.Type == targetType)
+                    collectedTarget++;
+
                 Destroy(piece.gameObject);
+            }
+        }
+
+        private void CheckEndConditions()
+        {
+            if (collectedTarget >= targetCount)
+            {
+                levelWon = true;
+                gameEnded = true;
+                return;
+            }
+
+            if (moves >= maxMoves)
+            {
+                levelWon = false;
+                gameEnded = true;
             }
         }
 
@@ -440,24 +471,72 @@ namespace LostAndFound.Match3
 
         private void OnGUI()
         {
+            float uiScale = Mathf.Max(1f, Screen.height / 1080f);
+
             GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 26,
+                fontSize = Mathf.RoundToInt(26 * uiScale),
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = Color.white }
             };
 
             GUIStyle infoStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 18,
+                fontSize = Mathf.RoundToInt(18 * uiScale),
                 normal = { textColor = new Color(0.9f, 0.92f, 0.96f) }
             };
 
-            GUI.Label(new Rect(20, 18, 400, 40), "Бюро потерянных вещей — Match-3", titleStyle);
-            GUI.Label(new Rect(20, 58, 250, 30), $"Счёт: {score}", infoStyle);
-            GUI.Label(new Rect(20, 86, 250, 30), $"Ходы: {moves}", infoStyle);
-            GUI.Label(new Rect(20, Screen.height - 42, 620, 30),
+            GUIStyle resultStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = Mathf.RoundToInt(34 * uiScale),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = Color.white }
+            };
+
+            float x = 20 * uiScale;
+            float y = 18 * uiScale;
+            float line = 34 * uiScale;
+
+            GUI.Label(new Rect(x, y, 700 * uiScale, 48 * uiScale),
+                "Бюро потерянных вещей — Match-3", titleStyle);
+
+            GUI.Label(new Rect(x, y + line * 1.4f, 350 * uiScale, 32 * uiScale),
+                $"Счёт: {score}", infoStyle);
+
+            GUI.Label(new Rect(x, y + line * 2.3f, 350 * uiScale, 32 * uiScale),
+                $"Ходы: {MovesLeft}/{maxMoves}", infoStyle);
+
+            Color oldColor = GUI.color;
+            GUI.color = palette[targetType];
+            GUI.Box(new Rect(x, y + line * 3.4f, 28 * uiScale, 28 * uiScale), GUIContent.none);
+            GUI.color = oldColor;
+
+            GUI.Label(new Rect(x + 38 * uiScale, y + line * 3.25f, 500 * uiScale, 34 * uiScale),
+                $"Цель: собрать {targetCount} красных — {Mathf.Min(collectedTarget, targetCount)}/{targetCount}",
+                infoStyle);
+
+            GUI.Label(new Rect(x, Screen.height - 54 * uiScale, 820 * uiScale, 34 * uiScale),
                 "Нажми на две соседние фишки. Совпадения 3+ исчезают.", infoStyle);
+
+            if (!gameEnded)
+                return;
+
+            string message = levelWon
+                ? "ДЕЛО ПРОДВИНУЛОСЬ! УЛИКА ПОЛУЧЕНА"
+                : "ХОДЫ ЗАКОНЧИЛИСЬ";
+
+            GUI.Box(new Rect(
+                Screen.width * 0.5f - 360 * uiScale,
+                Screen.height * 0.5f - 70 * uiScale,
+                720 * uiScale,
+                140 * uiScale), GUIContent.none);
+
+            GUI.Label(new Rect(
+                Screen.width * 0.5f - 340 * uiScale,
+                Screen.height * 0.5f - 52 * uiScale,
+                680 * uiScale,
+                104 * uiScale), message, resultStyle);
         }
     }
 }
