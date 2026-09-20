@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+using LostAndFound.Cases;
 
 namespace LostAndFound.Match3
 {
@@ -30,6 +32,7 @@ namespace LostAndFound.Match3
         private bool inputLocked;
         private bool gameEnded;
         private bool levelWon;
+        private bool finishFlowStarted;
         private int score;
         private int moves;
         private int collectedTarget;
@@ -80,6 +83,16 @@ namespace LostAndFound.Match3
 
         private void Start()
         {
+            CaseSession.EnsureInitialized();
+
+            Match3LevelDefinition level = CaseSession.CurrentLevel;
+            if (level != null)
+            {
+                maxMoves = level.Moves;
+                targetType = level.TargetType;
+                targetCount = level.TargetCount;
+            }
+
             pieces = new Match3Piece[width, height];
             targetType = Mathf.Clamp(targetType, 0, palette.Length - 1);
 
@@ -298,6 +311,14 @@ namespace LostAndFound.Match3
             moves++;
             yield return ResolveBoard(matches);
             CheckEndConditions();
+
+            if (gameEnded && !finishFlowStarted)
+            {
+                finishFlowStarted = true;
+                yield return FinishLevelFlow();
+                yield break;
+            }
+
             inputLocked = false;
         }
 
@@ -369,6 +390,23 @@ namespace LostAndFound.Match3
             {
                 levelWon = false;
                 gameEnded = true;
+            }
+        }
+
+        private IEnumerator FinishLevelFlow()
+        {
+            inputLocked = true;
+
+            if (levelWon)
+            {
+                yield return new WaitForSeconds(1.8f);
+                CaseSession.CompleteCurrentSearch();
+                SceneManager.LoadScene("SampleScene");
+            }
+            else
+            {
+                yield return new WaitForSeconds(2.0f);
+                SceneManager.LoadScene("Match3");
             }
         }
 
@@ -687,8 +725,8 @@ namespace LostAndFound.Match3
             string badge = levelWon ? "ДЕЛО ПРОДВИНУЛОСЬ" : "ПОПРОБУЕМ ЕЩЁ РАЗ";
             string heading = levelWon ? "Улика получена" : "Ходы закончились";
             string body = levelWon
-                ? "Следы привели нас к новой зацепке."
-                : "Нужно собрать цель до окончания ходов.";
+                ? "Новая улика добавлена в дело. Возвращаемся в бюро..."
+                : "Нужно собрать цель до окончания ходов. Уровень начнётся заново.";
 
             GUI.Label(new Rect(card.x, card.y + 30f * scale, card.width, 28f * scale), badge, badgeStyle);
             GUI.Label(new Rect(card.x + 20f * scale, card.y + 72f * scale, card.width - 40f * scale, 55f * scale), heading, headingStyle);
