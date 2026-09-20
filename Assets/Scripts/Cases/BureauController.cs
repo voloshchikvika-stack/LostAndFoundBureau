@@ -40,6 +40,7 @@ namespace LostAndFound.Cases
         private Texture2D accentTexture;
         private Texture2D corkTexture;
         private Texture2D paperTexture;
+        private Font uiFont;
 
         private bool cluePopupVisible;
         private float cluePopupUntil;
@@ -133,10 +134,10 @@ namespace LostAndFound.Cases
             deskEdgeTexture = MakeTexture(new Color(0.30f, 0.15f, 0.08f, 1f));
             panelTexture = MakeRoundedTexture(new Color(0.09f, 0.11f, 0.13f, 0.94f), 22);
             panelStrongTexture = MakeRoundedTexture(new Color(0.07f, 0.08f, 0.10f, 0.985f), 26);
-            speechBubbleTexture = MakeRoundedTexture(new Color(0.965f, 0.925f, 0.82f, 1f), 30);
-            speechPointerTexture = MakeTriangleTexture(new Color(0.965f, 0.925f, 0.82f, 1f));
-            buttonTexture = MakeRoundedTexture(new Color(0.31f, 0.51f, 0.35f, 1f), 24);
-            buttonHoverTexture = MakeRoundedTexture(new Color(0.38f, 0.61f, 0.41f, 1f), 24);
+            speechBubbleTexture = MakeRoundedTexture(new Color(0.975f, 0.935f, 0.84f, 1f), 24);
+            speechPointerTexture = MakeTriangleTexture(new Color(0.975f, 0.935f, 0.84f, 1f));
+            buttonTexture = MakeRoundedTexture(new Color(0.49f, 0.31f, 0.22f, 1f), 22);
+            buttonHoverTexture = MakeRoundedTexture(new Color(0.59f, 0.39f, 0.28f, 1f), 22);
             folderTexture = MakeRoundedTexture(new Color(0.73f, 0.49f, 0.22f, 1f), 18);
             folderPaperTexture = MakeRoundedTexture(new Color(0.92f, 0.82f, 0.61f, 1f), 20);
             overlayTexture = MakeTexture(new Color(0.01f, 0.015f, 0.02f, 0.66f));
@@ -145,6 +146,10 @@ namespace LostAndFound.Cases
             accentTexture = MakeTexture(new Color(0.77f, 0.64f, 0.36f, 1f));
             corkTexture = MakeTexture(new Color(0.58f, 0.38f, 0.22f, 1f));
             paperTexture = MakeTexture(new Color(0.92f, 0.88f, 0.76f, 1f));
+
+            uiFont = Font.CreateDynamicFontFromOSFont(
+                new[] { "Segoe UI", "Arial" },
+                32);
         }
 
         private Texture2D MakeTexture(Color color)
@@ -254,6 +259,7 @@ namespace LostAndFound.Cases
         {
             GUIStyle style = new GUIStyle(GUI.skin.label)
             {
+                font = uiFont,
                 fontSize = Mathf.RoundToInt(size * scale),
                 fontStyle = fontStyle,
                 alignment = alignment,
@@ -269,14 +275,16 @@ namespace LostAndFound.Cases
         {
             GUIStyle style = new GUIStyle(GUI.skin.button)
             {
+                font = uiFont,
                 fontSize = Mathf.RoundToInt(size * scale),
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter,
                 wordWrap = true,
-                padding = new RectOffset(16, 16, 10, 10)
+                padding = new RectOffset(16, 16, 10, 10),
+                border = new RectOffset(22, 22, 22, 22)
             };
 
-            style.normal.textColor = Color.white;
+            style.normal.textColor = new Color(1f, 0.96f, 0.89f);
             style.hover.textColor = Color.white;
             style.active.textColor = Color.white;
             style.normal.background = buttonTexture;
@@ -298,9 +306,12 @@ namespace LostAndFound.Cases
                 GUI.DrawTexture(R(0, 790, 1920, 18, scale), deskEdgeTexture);
             }
 
-            GUIStyle signStyle = LabelStyle(18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.93f, 0.87f, 0.72f));
-            GUI.DrawTexture(R(700, 24, 520, 50, scale), panelTexture);
-            GUI.Label(R(720, 29, 480, 39, scale), "БЮРО ПОТЕРЯННЫХ ВЕЩЕЙ", signStyle);
+            if (officeBackground == null)
+            {
+                GUIStyle signStyle = LabelStyle(18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.93f, 0.87f, 0.72f));
+                DrawNineSlice(R(700, 24, 520, 50, scale), panelTexture, 20);
+                GUI.Label(R(720, 29, 480, 39, scale), "БЮРО ПОТЕРЯННЫХ ВЕЩЕЙ", signStyle);
+            }
         }
 
         private void DrawFallbackDetectiveOffice(float scale)
@@ -332,7 +343,7 @@ namespace LostAndFound.Cases
             if (currentCase == null)
                 return;
 
-            Rect clientRect = R(110, 245, 520, 560, scale);
+            Rect clientRect = R(135, 235, 430, 540, scale);
 
             if (clientImage != null)
             {
@@ -353,21 +364,29 @@ namespace LostAndFound.Cases
 
         private void DrawClientIntro(float scale)
         {
+            DrawCaseFolderOnDesk(scale, false);
+
             DrawSpeechBubble(
-                R(590, 125, 1120, 565, scale),
-                R(560, 610, 90, 76, scale),
+                R(560, 120, 1160, 515, scale),
+                R(535, 525, 82, 70, scale),
                 scale);
 
-            GUIStyle nameStyle = LabelStyle(24, FontStyle.Bold, TextAnchor.MiddleLeft, scale, new Color(0.25f, 0.18f, 0.13f));
-            GUIStyle itemStyle = LabelStyle(17, FontStyle.Bold, TextAnchor.MiddleLeft, scale, new Color(0.47f, 0.31f, 0.16f));
-            GUIStyle storyStyle = LabelStyle(20, FontStyle.Normal, TextAnchor.UpperLeft, scale, new Color(0.16f, 0.13f, 0.11f));
+            Color darkCoffee = new Color(0.21f, 0.14f, 0.11f);
+            Color mediumCoffee = new Color(0.47f, 0.30f, 0.20f);
+
+            GUIStyle nameStyle = LabelStyle(22, FontStyle.Bold, TextAnchor.MiddleLeft, scale, darkCoffee);
+            GUIStyle itemStyle = LabelStyle(15, FontStyle.Bold, TextAnchor.MiddleRight, scale, mediumCoffee);
+            GUIStyle storyStyle = LabelStyle(19, FontStyle.Normal, TextAnchor.UpperLeft, scale, darkCoffee);
             GUIStyle buttonStyle = ButtonStyle(19, scale);
 
-            GUI.Label(R(650, 160, 980, 36, scale), currentCase.ClientName, nameStyle);
-            GUI.Label(R(650, 205, 980, 28, scale), $"Потеряно: {currentCase.LostItemName}", itemStyle);
-            GUI.Label(R(650, 252, 995, 320, scale), currentCase.Story, storyStyle);
+            GUI.Label(R(625, 158, 310, 34, scale), currentCase.ClientName.ToUpperInvariant(), nameStyle);
+            GUI.Label(R(930, 160, 710, 30, scale), $"ПОТЕРЯНО: {currentCase.LostItemName.ToUpperInvariant()}", itemStyle);
 
-            if (GUI.Button(R(1205, 590, 420, 66, scale), "НАЧАТЬ ПОИСК", buttonStyle))
+            GUI.DrawTexture(R(625, 205, 1030, 2, scale), accentTexture);
+            GUI.Label(R(625, 232, 1030, 245, scale), currentCase.Story, storyStyle);
+
+            Rect startButton = R(760, 535, 400, 64, scale);
+            if (GUI.Button(startButton, "НАЧАТЬ ПОИСК", buttonStyle))
             {
                 CaseSession.MarkIntroSeen();
                 SceneManager.LoadScene("Match3");
@@ -376,8 +395,20 @@ namespace LostAndFound.Cases
 
         private void DrawSpeechBubble(Rect bubble, Rect pointer, float scale)
         {
-            GUI.DrawTexture(bubble, speechBubbleTexture, ScaleMode.StretchToFill, true);
+            DrawNineSlice(bubble, speechBubbleTexture, 24);
             GUI.DrawTexture(pointer, speechPointerTexture, ScaleMode.StretchToFill, true);
+        }
+
+        private void DrawNineSlice(Rect rect, Texture2D texture, int border)
+        {
+            GUIStyle style = new GUIStyle(GUI.skin.box)
+            {
+                border = new RectOffset(border, border, border, border),
+                padding = new RectOffset(0, 0, 0, 0)
+            };
+
+            style.normal.background = texture;
+            GUI.Box(rect, GUIContent.none, style);
         }
 
         private void DrawDeskMode(float scale)
@@ -399,12 +430,12 @@ namespace LostAndFound.Cases
             GUI.Label(R(665, 235, 830, 95, scale), text, bodyStyle);
 
             if (CaseSession.CompletedClues > 0)
-                DrawInteractiveCaseFolder(scale);
+                DrawCaseFolderOnDesk(scale, true);
         }
 
-        private void DrawInteractiveCaseFolder(float scale)
+        private void DrawCaseFolderOnDesk(float scale, bool interactive)
         {
-            Rect folderRect = R(1235, 810, 475, 220, scale);
+            Rect folderRect = R(720, 815, 480, 235, scale);
 
             if (caseFolderImage != null)
             {
@@ -412,19 +443,26 @@ namespace LostAndFound.Cases
             }
             else
             {
-                GUI.DrawTexture(folderRect, folderTexture, ScaleMode.StretchToFill, true);
-                GUI.DrawTexture(R(1285, 842, 370, 135, scale), folderPaperTexture, ScaleMode.StretchToFill, true);
+                DrawNineSlice(folderRect, folderTexture, 18);
+                DrawNineSlice(R(785, 858, 350, 120, scale), folderPaperTexture, 18);
 
-                GUIStyle folderTitle = LabelStyle(22, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.24f, 0.13f, 0.07f));
-                GUIStyle folderSmall = LabelStyle(15, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.37f, 0.23f, 0.12f));
+                GUIStyle folderTitle = LabelStyle(21, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.24f, 0.13f, 0.07f));
+                GUIStyle folderSmall = LabelStyle(14, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.37f, 0.23f, 0.12f));
 
-                GUI.Label(R(1300, 858, 340, 40, scale), $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
-                GUI.Label(R(1300, 902, 340, 38, scale), currentCase.LostItemName, folderSmall);
-                GUI.Label(
-                    R(1300, 945, 340, 30, scale),
-                    $"УЛИКИ {CaseSession.CompletedClues}/{currentCase.RequiredClues}",
-                    folderSmall);
+                GUI.Label(R(800, 870, 320, 36, scale), $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
+                GUI.Label(R(800, 910, 320, 30, scale), currentCase.LostItemName, folderSmall);
+
+                if (CaseSession.CompletedClues > 0)
+                {
+                    GUI.Label(
+                        R(800, 944, 320, 28, scale),
+                        $"УЛИКИ {CaseSession.CompletedClues}/{currentCase.RequiredClues}",
+                        folderSmall);
+                }
             }
+
+            if (!interactive)
+                return;
 
             GUIStyle invisibleButton = new GUIStyle(GUI.skin.button);
             invisibleButton.normal.background = null;
