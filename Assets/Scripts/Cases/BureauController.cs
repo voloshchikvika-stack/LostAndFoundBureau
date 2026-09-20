@@ -343,7 +343,7 @@ namespace LostAndFound.Cases
             if (currentCase == null)
                 return;
 
-            Rect clientRect = R(135, 235, 430, 540, scale);
+            Rect clientRect = R(140, 235, 420, 515, scale);
 
             if (clientImage != null)
             {
