@@ -294,10 +294,9 @@ namespace LostAndFound.Cases
             else
             {
                 DrawFallbackDetectiveOffice(scale);
+                GUI.DrawTexture(R(0, 795, 1920, 285, scale), deskTexture);
+                GUI.DrawTexture(R(0, 790, 1920, 18, scale), deskEdgeTexture);
             }
-
-            GUI.DrawTexture(R(0, 795, 1920, 285, scale), deskTexture);
-            GUI.DrawTexture(R(0, 790, 1920, 18, scale), deskEdgeTexture);
 
             GUIStyle signStyle = LabelStyle(18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.93f, 0.87f, 0.72f));
             GUI.DrawTexture(R(700, 24, 520, 50, scale), panelTexture);
