@@ -5,16 +5,33 @@ namespace LostAndFound.Match3
 {
     public static class Match3Bootstrap
     {
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void CreateBoardIfNeeded()
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void RegisterSceneLoaded()
         {
-            if (SceneManager.GetActiveScene().name != "Match3")
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void CreateOnInitialScene()
+        {
+            CreateBoardIfNeeded(SceneManager.GetActiveScene());
+        }
+
+        private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            CreateBoardIfNeeded(scene);
+        }
+
+        private static void CreateBoardIfNeeded(Scene scene)
+        {
+            if (scene.name != "Match3")
                 return;
 
             if (Object.FindFirstObjectByType<Match3Board>() != null)
                 return;
 
-            var boardObject = new GameObject("Match3Board");
+            GameObject boardObject = new GameObject("Match3Board");
             boardObject.AddComponent<Match3Board>();
         }
     }
