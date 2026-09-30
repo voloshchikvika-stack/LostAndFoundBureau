@@ -504,11 +504,12 @@ namespace LostAndFound.Cases
 
             GUI.Label(R(665, 185, 820, 34, scale), currentCase.ClientName, nameStyle);
 
-            string text = CaseSession.MiniGameReady
-                ? "Кажется, найденные записи можно сопоставить. Откройте папку на столе — там новое задание."
-                : CaseSession.HasAllClues
-                    ? "Похоже, у нас уже достаточно информации. Посмотрите дело на столе и попробуйте понять, где осталась вещь."
-                    : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
+            int responseIndex = CaseSession.CompletedClues - 1;
+            bool hasResponse = currentCase.ClueResponses != null &&
+                               responseIndex >= 0 && responseIndex < currentCase.ClueResponses.Length;
+            string text = hasResponse
+                ? currentCase.ClueResponses[responseIndex]
+                : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
 
             GUI.Label(R(665, 235, 830, 95, scale), text, bodyStyle);
 
