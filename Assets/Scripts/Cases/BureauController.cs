@@ -11,11 +11,23 @@ namespace LostAndFound.Cases
             Desk,
             CaseFile,
             Answers,
+            Inquiry,
+            MiniGame,
+            Shop,
+            Archive,
             Finished
         }
 
         private BureauMode mode;
+        private BureauMode previousMode;
         private CaseDefinition currentCase;
+        private string[] storyPages = new string[0];
+        private int storyPageIndex;
+        private int miniGameStep;
+        private bool[] miniGamePicked = new bool[0];
+        private string miniGameFeedback = "";
+        private int archiveDetailIndex = -1;
+        private int lastReward;
 
         private Texture2D officeBackground;
         private Texture2D clientImage;
@@ -124,6 +136,12 @@ namespace LostAndFound.Cases
 
             clientImage = Resources.Load<Texture2D>($"Cases/{currentCase.Id}/Client");
             lostItemImage = Resources.Load<Texture2D>($"Cases/{currentCase.Id}/LostItem");
+            storyPages = (currentCase.Story ?? "").Split(
+                new[] { "\n\n" }, System.StringSplitOptions.None);
+            storyPageIndex = 0;
+            miniGameStep = 0;
+            miniGamePicked = new bool[currentCase.MiniGameCards == null ? 0 : currentCase.MiniGameCards.Length];
+            miniGameFeedback = "";
         }
 
         private void BuildUiTextures()
@@ -218,10 +236,14 @@ namespace LostAndFound.Cases
             scale = Mathf.Clamp(scale, 0.65f, 2.5f);
 
             DrawOffice(scale);
+            bool canInteract = !cluePopupVisible && !reactionVisible;
+            GUI.enabled = canInteract;
+            DrawTopBar(scale);
 
             if (mode == BureauMode.Finished)
             {
                 DrawFinished(scale);
+                GUI.enabled = true;
                 return;
             }
 
@@ -241,7 +263,21 @@ namespace LostAndFound.Cases
                 case BureauMode.Answers:
                     DrawAnswers(scale);
                     break;
+                case BureauMode.Inquiry:
+                    DrawInquiry(scale);
+                    break;
+                case BureauMode.MiniGame:
+                    DrawMiniGame(scale);
+                    break;
+                case BureauMode.Shop:
+                    DrawShop(scale);
+                    break;
+                case BureauMode.Archive:
+                    DrawArchive(scale);
+                    break;
             }
+
+            GUI.enabled = true;
 
             if (cluePopupVisible)
                 DrawClueReceivedPopup(scale);
@@ -305,6 +341,8 @@ namespace LostAndFound.Cases
                 GUI.DrawTexture(R(0, 795, 1920, 285, scale), deskTexture);
                 GUI.DrawTexture(R(0, 790, 1920, 18, scale), deskEdgeTexture);
             }
+
+            DrawPurchasedDecor(scale);
 
             if (officeBackground == null)
             {
@@ -373,23 +411,66 @@ namespace LostAndFound.Cases
 
             Color darkCoffee = new Color(0.21f, 0.14f, 0.11f);
             Color mediumCoffee = new Color(0.47f, 0.30f, 0.20f);
-
             GUIStyle nameStyle = LabelStyle(22, FontStyle.Bold, TextAnchor.MiddleLeft, scale, darkCoffee);
             GUIStyle itemStyle = LabelStyle(15, FontStyle.Bold, TextAnchor.MiddleRight, scale, mediumCoffee);
             GUIStyle storyStyle = LabelStyle(19, FontStyle.Normal, TextAnchor.UpperLeft, scale, darkCoffee);
+            GUIStyle pageStyle = LabelStyle(15, FontStyle.Normal, TextAnchor.MiddleLeft, scale, mediumCoffee);
             GUIStyle buttonStyle = ButtonStyle(19, scale);
 
             GUI.Label(R(625, 158, 310, 34, scale), currentCase.ClientName.ToUpperInvariant(), nameStyle);
             GUI.Label(R(930, 160, 710, 30, scale), $"ПОТЕРЯНО: {currentCase.LostItemName.ToUpperInvariant()}", itemStyle);
-
             GUI.DrawTexture(R(625, 205, 1030, 2, scale), accentTexture);
-            GUI.Label(R(625, 232, 1030, 245, scale), currentCase.Story, storyStyle);
 
-            Rect startButton = R(760, 535, 400, 64, scale);
-            if (GUI.Button(startButton, "НАЧАТЬ ПОИСК", buttonStyle))
+            string page = storyPages.Length > 0
+                ? storyPages[Mathf.Clamp(storyPageIndex, 0, storyPages.Length - 1)] : currentCase.Story;
+            GUI.Label(R(625, 232, 1030, 250, scale), page, storyStyle);
+
+            bool hasMorePages = storyPageIndex < storyPages.Length - 1;
+            GUI.Label(R(625, 485, 320, 28, scale),
+                $"СТРАНИЦА {storyPageIndex + 1}/{Mathf.Max(1, storyPages.Length)}", pageStyle);
+
+            if (hasMorePages)
             {
-                CaseSession.MarkIntroSeen();
-                SceneManager.LoadScene("Match3");
+                if (GUI.Button(R(940, 535, 400, 64, scale), "ПРОДОЛЖИТЬ", buttonStyle))
+                    storyPageIndex++;
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(currentCase.InquiryQuestion) && !CaseSession.InquirySeen)
+            {
+                if (GUI.Button(R(770, 535, 360, 64, scale), "НАЧАТЬ ПОИСК", buttonStyle))
+                    BeginSearch();
+
+                if (GUI.Button(R(1150, 535, 360, 64, scale), "ЗАДАТЬ ВОПРОС", buttonStyle))
+                    mode = BureauMode.Inquiry;
+            }
+            else
+            {
+                if (GUI.Button(R(940, 535, 400, 64, scale), "НАЧАТЬ ПОИСК", buttonStyle))
+                    BeginSearch();
+            }
+        }
+
+        private void BeginSearch()
+        {
+            CaseSession.MarkIntroSeen();
+            SceneManager.LoadScene("Match3");
+        }
+
+        private void DrawInquiry(float scale)
+        {
+            DrawCaseFolderOnDesk(scale, false);
+            DrawSpeechBubble(R(575, 155, 1100, 440, scale), R(540, 500, 82, 70, scale), scale);
+            Color dark = new Color(0.23f, 0.15f, 0.11f);
+            GUIStyle heading = LabelStyle(24, FontStyle.Bold, TextAnchor.MiddleLeft, scale, dark);
+            GUIStyle body = LabelStyle(20, FontStyle.Normal, TextAnchor.UpperLeft, scale, dark);
+            GUIStyle button = ButtonStyle(18, scale);
+            GUI.Label(R(640, 187, 960, 48, scale), currentCase.InquiryQuestion, heading);
+            GUI.Label(R(640, 265, 960, 200, scale), currentCase.InquiryAnswer, body);
+            if (GUI.Button(R(905, 497, 390, 64, scale), "ВЕРНУТЬСЯ", button))
+            {
+                CaseSession.MarkInquirySeen();
+                mode = BureauMode.ClientIntro;
             }
         }
 
@@ -423,9 +504,11 @@ namespace LostAndFound.Cases
 
             GUI.Label(R(665, 185, 820, 34, scale), currentCase.ClientName, nameStyle);
 
-            string text = CaseSession.HasAllClues
-                ? "Похоже, у нас уже достаточно информации. Посмотрите дело на столе и попробуйте понять, где осталась вещь."
-                : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
+            string text = CaseSession.MiniGameReady
+                ? "Кажется, найденные записи можно сопоставить. Откройте папку на столе — там новое задание."
+                : CaseSession.HasAllClues
+                    ? "Похоже, у нас уже достаточно информации. Посмотрите дело на столе и попробуйте понять, где осталась вещь."
+                    : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
 
             GUI.Label(R(665, 235, 830, 95, scale), text, bodyStyle);
 
@@ -508,7 +591,12 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(345, 835, 245, 58, scale), "ЗАКРЫТЬ ДЕЛО", buttonStyle))
                 mode = BureauMode.Desk;
 
-            if (CaseSession.HasAllClues)
+            if (CaseSession.MiniGameReady)
+            {
+                if (GUI.Button(R(1060, 835, 495, 58, scale), "ВОССТАНОВИТЬ ХРОНОЛОГИЮ", buttonStyle))
+                    StartMiniGame();
+            }
+            else if (CaseSession.HasAllClues)
             {
                 if (GUI.Button(R(1175, 835, 380, 58, scale), "СДЕЛАТЬ ВЫВОД", buttonStyle))
                     mode = BureauMode.Answers;
@@ -552,6 +640,10 @@ namespace LostAndFound.Cases
 
         private void StartReaction(bool correct)
         {
+            if (reactionVisible)
+                return;
+
+            lastReward = BureauEconomy.CompleteCase(currentCase.Id, correct);
             reactionVisible = true;
             reactionWasCorrect = correct;
             reactionStage = 0;
@@ -601,6 +693,241 @@ namespace LostAndFound.Cases
 
             GUI.Label(R(650, 195, 900, 38, scale), heading, title);
             GUI.Label(R(650, 255, 900, 190, scale), reactionText, body);
+            if (lastReward > 0)
+                GUI.Label(R(650, 445, 900, 38, scale),
+                    $"+{lastReward} монет", title);
+        }
+
+        private void DrawTopBar(float scale)
+        {
+            if (mode != BureauMode.ClientIntro && mode != BureauMode.Desk &&
+                mode != BureauMode.Finished)
+                return;
+
+            GUIStyle info = LabelStyle(20, FontStyle.Bold, TextAnchor.MiddleCenter,
+                scale, new Color(0.25f, 0.17f, 0.11f));
+            GUIStyle button = ButtonStyle(17, scale);
+
+            DrawNineSlice(R(1315, 20, 150, 58, scale), speechBubbleTexture, 24);
+            GUI.Label(R(1330, 29, 120, 38, scale), $"{BureauEconomy.Coins} ◈", info);
+
+            if (GUI.Button(R(1485, 20, 175, 58, scale), "МАГАЗИН", button))
+                OpenOverlay(BureauMode.Shop);
+
+            if (GUI.Button(R(1678, 20, 200, 58, scale), "АРХИВ", button))
+                OpenOverlay(BureauMode.Archive);
+        }
+
+        private void OpenOverlay(BureauMode next)
+        {
+            previousMode = mode;
+            mode = next;
+        }
+
+        private void CloseOverlay()
+        {
+            mode = previousMode;
+        }
+
+        private void DrawPurchasedDecor(float scale)
+        {
+            var positions = new[]
+            {
+                R(555, 814, 135, 125, scale),
+                R(1180, 806, 120, 155, scale),
+                R(1480, 585, 150, 175, scale),
+                R(345, 785, 160, 135, scale)
+            };
+
+            int index = 0;
+            foreach (BureauUpgrade upgrade in BureauEconomy.Upgrades)
+            {
+                if (BureauEconomy.Owns(upgrade.Id))
+                {
+                    Rect position = positions[index];
+                    Texture2D decorImage = Resources.Load<Texture2D>("Bureau/Decor/" + upgrade.Id);
+
+                    if (decorImage != null)
+                    {
+                        GUI.DrawTexture(position, decorImage, ScaleMode.ScaleToFit, true);
+                    }
+                    else
+                    {
+                        DrawNineSlice(position, folderPaperTexture, 20);
+                        GUIStyle label = LabelStyle(13, FontStyle.Bold, TextAnchor.MiddleCenter,
+                            scale, new Color(0.40f, 0.25f, 0.16f));
+                        GUI.Label(new Rect(position.x + 8f * scale, position.y + 6f * scale,
+                            position.width - 16f * scale, position.height - 12f * scale),
+                            upgrade.Name, label);
+                    }
+                }
+                index++;
+            }
+        }
+
+        private void DrawShop(float scale)
+        {
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture);
+            DrawNineSlice(R(280, 115, 1360, 860, scale), folderPaperTexture, 20);
+            Color ink = new Color(0.27f, 0.17f, 0.11f);
+            GUIStyle title = LabelStyle(35, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle sub = LabelStyle(19, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle itemTitle = LabelStyle(23, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle button = ButtonStyle(18, scale);
+
+            GUI.Label(R(350, 155, 700, 60, scale), "ОБУСТРОЙСТВО БЮРО", title);
+            GUI.Label(R(1120, 160, 370, 52, scale), $"Монеты: {BureauEconomy.Coins}", itemTitle);
+            GUI.Label(R(350, 220, 1190, 40, scale),
+                "Купленные предметы появляются в интерьере бюро.", sub);
+
+            int index = 0;
+            foreach (BureauUpgrade upgrade in BureauEconomy.Upgrades)
+            {
+                float y = 285f + index * 138f;
+                DrawNineSlice(R(340, y, 1240, 126, scale), speechBubbleTexture, 24);
+                GUI.Label(R(375, y + 15, 760, 40, scale), upgrade.Name, itemTitle);
+                GUI.Label(R(375, y + 62, 760, 40, scale), upgrade.Description, sub);
+
+                if (BureauEconomy.Owns(upgrade.Id))
+                {
+                    GUI.Label(R(1280, y + 41, 245, 48, scale), "КУПЛЕНО", itemTitle);
+                }
+                else
+                {
+                    GUI.enabled = BureauEconomy.Coins >= upgrade.Price;
+                    if (GUI.Button(R(1220, y + 30, 310, 65, scale),
+                        $"КУПИТЬ · {upgrade.Price} ◈", button))
+                        BureauEconomy.TryBuy(upgrade);
+                    GUI.enabled = true;
+                }
+
+                index++;
+            }
+
+            if (GUI.Button(R(760, 865, 400, 67, scale), "ВЕРНУТЬСЯ", button))
+                CloseOverlay();
+        }
+
+        private void DrawArchive(float scale)
+        {
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture);
+            DrawNineSlice(R(280, 115, 1360, 860, scale), folderPaperTexture, 20);
+            Color ink = new Color(0.28f, 0.18f, 0.12f);
+            GUIStyle title = LabelStyle(33, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle body = LabelStyle(18, FontStyle.Normal, TextAnchor.UpperLeft, scale, ink);
+            GUIStyle item = LabelStyle(20, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle button = ButtonStyle(17, scale);
+
+            GUI.Label(R(350, 155, 900, 58, scale), "АРХИВ РАССЛЕДОВАНИЙ", title);
+            GUI.Label(R(350, 213, 1150, 43, scale),
+                "Здесь сохраняются решения завершённых дел.", body);
+
+            for (int i = 0; i < CaseDatabase.Cases.Count; i++)
+            {
+                CaseDefinition entry = CaseDatabase.GetCase(i);
+                int result = BureauEconomy.CaseResult(entry.Id);
+                string outcome = result == 1 ? "НАЙДЕНО" : (result == -1 ? "НЕ НАЙДЕНО" : "НЕ ЗАВЕРШЕНО");
+                string label = $"ДЕЛО №{i + 1:00}: {entry.LostItemName}     {outcome}";
+                if (GUI.Button(R(350, 277 + i * 105, 1220, 82, scale), label, button))
+                    archiveDetailIndex = i;
+            }
+
+            if (archiveDetailIndex >= 0 && archiveDetailIndex < CaseDatabase.Cases.Count)
+            {
+                CaseDefinition selected = CaseDatabase.GetCase(archiveDetailIndex);
+                int result = BureauEconomy.CaseResult(selected.Id);
+                if (result != 0)
+                {
+                    GUI.Label(R(365, 525, 1110, 48, scale),
+                        $"Клиент: {selected.ClientName}", item);
+                    GUI.Label(R(365, 587, 1110, 180, scale),
+                        result == 1 ? selected.CorrectResponse :
+                        selected.CorrectAnswerExplanation, body);
+                }
+                else
+                {
+                    GUI.Label(R(365, 525, 1110, 120, scale),
+                        "Материалы этого дела откроются после завершения расследования.", body);
+                }
+            }
+
+            if (GUI.Button(R(760, 865, 400, 67, scale), "ВЕРНУТЬСЯ", button))
+                CloseOverlay();
+        }
+
+        private void StartMiniGame()
+        {
+            mode = BureauMode.MiniGame;
+            miniGameStep = 0;
+            miniGameFeedback = "";
+            miniGamePicked = new bool[currentCase.MiniGameCards.Length];
+        }
+
+        private void DrawMiniGame(float scale)
+        {
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture);
+            DrawNineSlice(R(310, 125, 1300, 815, scale), folderPaperTexture, 20);
+            Color ink = new Color(0.27f, 0.17f, 0.11f);
+            GUIStyle title = LabelStyle(33, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle body = LabelStyle(20, FontStyle.Normal, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle progress = LabelStyle(18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle button = ButtonStyle(19, scale);
+
+            GUI.Label(R(370, 170, 1180, 50, scale), currentCase.MiniGameTitle, title);
+            GUI.Label(R(390, 237, 1140, 85, scale), currentCase.MiniGameInstruction, body);
+            bool solved = CaseSession.MiniGameCompleted;
+
+            if (!solved)
+            {
+                GUI.Label(R(620, 320, 680, 35, scale),
+                    $"Фрагментов по порядку: {miniGameStep}/{miniGamePicked.Length}", progress);
+
+                for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
+                {
+                    bool wasPicked = miniGamePicked[i];
+                    GUI.enabled = !wasPicked;
+
+                    if (GUI.Button(R(480, 385 + i * 108, 960, 82, scale),
+                        wasPicked ? "✓  " + currentCase.MiniGameCards[i] :
+                        currentCase.MiniGameCards[i], button))
+                    {
+                        if (i == currentCase.MiniGameCorrectOrder[miniGameStep])
+                        {
+                            miniGamePicked[i] = true;
+                            miniGameStep++;
+
+                            if (miniGameStep == miniGamePicked.Length)
+                            {
+                                CaseSession.CompleteMiniGame();
+                                miniGameFeedback = currentCase.MiniGameResult;
+                            }
+                            else
+                                miniGameFeedback = "Верно! Выберите следующее событие.";
+                        }
+                        else
+                        {
+                            miniGameStep = 0;
+                            miniGamePicked = new bool[currentCase.MiniGameCards.Length];
+                            miniGameFeedback = "Порядок неверный. Попробуйте ещё раз.";
+                        }
+                    }
+
+                    GUI.enabled = true;
+                }
+
+                GUI.Label(R(540, 715, 840, 60, scale), miniGameFeedback, body);
+            }
+            else
+            {
+                GUI.Label(R(460, 385, 1000, 145, scale),
+                    "ЗАДАНИЕ ВЫПОЛНЕНО", title);
+                GUI.Label(R(460, 550, 1000, 130, scale),
+                    currentCase.MiniGameResult, body);
+            }
+
+            string backText = solved ? "ВЕРНУТЬСЯ К ДЕЛУ" : "ВЕРНУТЬСЯ";
+            if (GUI.Button(R(760, 820, 400, 66, scale), backText, button))
+                mode = BureauMode.CaseFile;
         }
 
         private void DrawFinished(float scale)
