@@ -16,6 +16,7 @@ namespace LostAndFound.Cases
             MiniGame,
             Shop,
             Archive,
+            ResetConfirm,
             Finished
         }
 
@@ -281,6 +282,9 @@ namespace LostAndFound.Cases
                     break;
                 case BureauMode.Archive:
                     DrawArchive(scale);
+                    break;
+                case BureauMode.ResetConfirm:
+                    DrawResetConfirm(scale);
                     break;
             }
 
@@ -556,8 +560,8 @@ namespace LostAndFound.Cases
 
             GUI.Label(R(665, 235, 830, 95, scale), text, bodyStyle);
 
-            if (CaseSession.CompletedClues > 0)
-                DrawCaseFolderOnDesk(scale, true);
+            // The active case is always on the desk, even before the first clue.
+            DrawCaseFolderOnDesk(scale, true);
         }
 
         private void DrawCaseFolderOnDesk(float scale, bool interactive)
@@ -590,11 +594,8 @@ namespace LostAndFound.Cases
             GUI.Label(R(810, 787, 300, 28, scale),
                 currentCase.LostItemName, folderSmall);
 
-            if (CaseSession.CompletedClues > 0)
-            {
-                GUI.Label(R(810, 818, 300, 25, scale),
-                    $"УЛИКИ {CaseSession.CompletedClues}/{currentCase.RequiredClues}", folderSmall);
-            }
+            GUI.Label(R(810, 818, 300, 25, scale),
+                $"УЛИКИ {CaseSession.CompletedClues}/{currentCase.RequiredClues}", folderSmall);
 
             if (!interactive)
                 return;
@@ -623,6 +624,19 @@ namespace LostAndFound.Cases
                 GUI.DrawTexture(R(1260, 170, 280, 205, scale), lostItemImage, ScaleMode.ScaleToFit, true);
 
             float clueY = 305f;
+
+            if (CaseSession.CompletedClues == 0)
+            {
+                GUIStyle emptyStyle = LabelStyle(
+                    20, FontStyle.Normal, TextAnchor.MiddleCenter, scale,
+                    new Color(0.38f, 0.27f, 0.18f));
+
+                GUI.Label(
+                    R(420, 405, 1080, 100, scale),
+                    "Улик пока нет. Начните поиск, чтобы добавить первую улику в дело.",
+                    emptyStyle);
+            }
+
             for (int i = 0; i < CaseSession.CompletedClues; i++)
             {
                 string clue = CaseSession.GetCollectedClue(i);
@@ -762,6 +776,9 @@ namespace LostAndFound.Cases
 
             if (GUI.Button(R(1678, 20, 200, 58, scale), "АРХИВ", button))
                 OpenOverlay(BureauMode.Archive);
+
+            if (GUI.Button(R(1678, 90, 200, 52, scale), "НОВАЯ ИГРА", button))
+                OpenOverlay(BureauMode.ResetConfirm);
         }
 
         private void OpenOverlay(BureauMode next)
@@ -773,6 +790,34 @@ namespace LostAndFound.Cases
         private void CloseOverlay()
         {
             mode = previousMode;
+        }
+
+        private void DrawResetConfirm(float scale)
+        {
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height),
+                overlayTexture, ScaleMode.StretchToFill);
+
+            DrawNineSlice(R(545, 330, 830, 390, scale), folderPaperTexture, 20);
+
+            Color ink = new Color(0.27f, 0.17f, 0.11f);
+            GUIStyle title = LabelStyle(31, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle body = LabelStyle(19, FontStyle.Normal, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle button = ButtonStyle(18, scale);
+
+            GUI.Label(R(600, 375, 720, 55, scale), "НАЧАТЬ ИГРУ ЗАНОВО?", title);
+            GUI.Label(
+                R(625, 455, 670, 105, scale),
+                "Будут сброшены дела, улики, монеты и покупки в бюро. Игра снова начнётся с первого клиента.",
+                body);
+
+            if (GUI.Button(R(650, 610, 280, 62, scale), "ОТМЕНА", button))
+                CloseOverlay();
+
+            if (GUI.Button(R(990, 610, 280, 62, scale), "СБРОСИТЬ", button))
+            {
+                CaseSession.ResetAllProgress();
+                SceneManager.LoadScene("SampleScene");
+            }
         }
 
         private void DrawPurchasedDecor(float scale)
