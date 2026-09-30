@@ -3,6 +3,14 @@ using UnityEngine;
 
 namespace LostAndFound.Match3
 {
+    public enum Match3BonusKind
+    {
+        None,
+        Plane,
+        Bomb,
+        ColorClear
+    }
+
     public class Match3Piece : MonoBehaviour
     {
         private SpriteRenderer spriteRenderer;
@@ -11,17 +19,43 @@ namespace LostAndFound.Match3
         public int Type { get; private set; }
         public int Column { get; private set; }
         public int Row { get; private set; }
+        public Match3BonusKind BonusKind { get; private set; }
+        public bool IsBonus => BonusKind != Match3BonusKind.None;
 
         public void Initialize(int type, int column, int row, Sprite sprite, Color color, float size)
         {
             Type = type;
             Column = column;
             Row = row;
+            BonusKind = Match3BonusKind.None;
 
             spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
-            spriteRenderer.sprite = sprite;
             spriteRenderer.color = color;
             spriteRenderer.sortingOrder = 1;
+
+            ApplySprite(sprite, size);
+        }
+
+        public void SetBonus(Match3BonusKind kind, Sprite sprite, float size)
+        {
+            BonusKind = kind;
+            ApplySprite(sprite, size);
+
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = Color.white;
+                spriteRenderer.sortingOrder = 3;
+            }
+
+            gameObject.name = $"Bonus_{kind}_{Column}_{Row}";
+        }
+
+        private void ApplySprite(Sprite sprite, float size)
+        {
+            if (spriteRenderer == null || sprite == null)
+                return;
+
+            spriteRenderer.sprite = sprite;
 
             float spriteWidth = Mathf.Max(0.001f, sprite.bounds.size.x);
             float spriteHeight = Mathf.Max(0.001f, sprite.bounds.size.y);
@@ -41,7 +75,7 @@ namespace LostAndFound.Match3
         public void SetSelected(bool selected)
         {
             if (spriteRenderer != null)
-                spriteRenderer.sortingOrder = selected ? 5 : 1;
+                spriteRenderer.sortingOrder = selected ? 8 : (IsBonus ? 3 : 1);
 
             transform.localScale = selected ? baseScale * 1.10f : baseScale;
         }
