@@ -245,6 +245,14 @@ namespace LostAndFound.Cases
 
             DrawClient(scale);
 
+            // The reaction is its own screen, not a layer on top of the answer sheet.
+            if (reactionVisible)
+            {
+                GUI.enabled = true;
+                DrawReaction(scale);
+                return;
+            }
+
             switch (mode)
             {
                 case BureauMode.ClientIntro:
@@ -281,8 +289,6 @@ namespace LostAndFound.Cases
             if (cluePopupVisible)
                 DrawClueReceivedPopup(scale);
 
-            if (reactionVisible)
-                DrawReaction(scale);
         }
 
         private Rect R(float x, float y, float w, float h, float scale)
@@ -703,10 +709,11 @@ namespace LostAndFound.Cases
 
         private void DrawReaction(float scale)
         {
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), overlayTexture, ScaleMode.StretchToFill);
-
             if (!reactionWasCorrect && reactionStage == 1)
             {
+                // Only the final explanation uses a darkened modal background.
+                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
+                    overlayTexture, ScaleMode.StretchToFill);
                 GUI.DrawTexture(R(485, 355, 950, 340, scale), panelStrongTexture, ScaleMode.StretchToFill, true);
 
                 GUIStyle titleStyle = LabelStyle(29, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.96f, 0.80f, 0.40f));
