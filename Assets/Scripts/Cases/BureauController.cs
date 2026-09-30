@@ -562,44 +562,45 @@ namespace LostAndFound.Cases
 
         private void DrawCaseFolderOnDesk(float scale, bool interactive)
         {
-            Rect folderRect = R(720, 815, 480, 235, scale);
+            // Keep the case high enough on the desk to be clearly visible on every aspect ratio.
+            Rect folderRect = R(690, 690, 540, 245, scale);
+            Rect shadowRect = R(705, 708, 540, 245, scale);
+
+            GUI.DrawTexture(shadowRect, overlayTexture, ScaleMode.StretchToFill, true);
+
+            // Always draw a visible folder base. The optional PNG sits on top of it.
+            DrawNineSlice(folderRect, folderTexture, 18);
 
             if (caseFolderImage != null)
             {
-                GUI.DrawTexture(folderRect, caseFolderImage, ScaleMode.ScaleToFit, true);
+                GUI.DrawTexture(R(705, 700, 510, 210, scale),
+                    caseFolderImage, ScaleMode.ScaleToFit, true);
             }
-            else
+
+            GUIStyle folderTitle = LabelStyle(
+                22, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.24f, 0.13f, 0.07f));
+            GUIStyle folderSmall = LabelStyle(
+                14, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.37f, 0.23f, 0.12f));
+
+            DrawNineSlice(R(790, 735, 340, 112, scale), folderPaperTexture, 18);
+            GUI.Label(R(810, 748, 300, 34, scale),
+                $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
+            GUI.Label(R(810, 787, 300, 28, scale),
+                currentCase.LostItemName, folderSmall);
+
+            if (CaseSession.CompletedClues > 0)
             {
-                DrawNineSlice(folderRect, folderTexture, 18);
-                DrawNineSlice(R(785, 858, 350, 120, scale), folderPaperTexture, 18);
-
-                GUIStyle folderTitle = LabelStyle(21, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.24f, 0.13f, 0.07f));
-                GUIStyle folderSmall = LabelStyle(14, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.37f, 0.23f, 0.12f));
-
-                GUI.Label(R(800, 870, 320, 36, scale), $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
-                GUI.Label(R(800, 910, 320, 30, scale), currentCase.LostItemName, folderSmall);
-
-                if (CaseSession.CompletedClues > 0)
-                {
-                    GUI.Label(
-                        R(800, 944, 320, 28, scale),
-                        $"УЛИКИ {CaseSession.CompletedClues}/{currentCase.RequiredClues}",
-                        folderSmall);
-                }
+                GUI.Label(R(810, 818, 300, 25, scale),
+                    $"УЛИКИ {CaseSession.CompletedClues}/{currentCase.RequiredClues}", folderSmall);
             }
 
             if (!interactive)
                 return;
 
-            GUIStyle invisibleButton = new GUIStyle(GUI.skin.button);
-            invisibleButton.normal.background = null;
-            invisibleButton.hover.background = null;
-            invisibleButton.active.background = null;
-            invisibleButton.normal.textColor = new Color(0, 0, 0, 0);
-            invisibleButton.hover.textColor = new Color(0, 0, 0, 0);
-            invisibleButton.active.textColor = new Color(0, 0, 0, 0);
-
-            if (GUI.Button(folderRect, "", invisibleButton))
+            GUIStyle openStyle = ButtonStyle(16, scale);
+            if (GUI.Button(R(790, 865, 340, 52, scale), "ОТКРЫТЬ ДЕЛО", openStyle))
                 mode = BureauMode.CaseFile;
         }
 
