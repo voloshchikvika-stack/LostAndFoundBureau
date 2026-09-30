@@ -41,6 +41,7 @@ namespace LostAndFound.Cases
         public string CorrectAnswerExplanation { get; }
         public string InquiryQuestion { get; }
         public string InquiryAnswer { get; }
+        public string[] ClueResponses { get; }
         public int MiniGameAfterClue { get; }
         public string MiniGameTitle { get; }
         public string MiniGameInstruction { get; }
@@ -68,6 +69,7 @@ namespace LostAndFound.Cases
             string correctAnswerExplanation,
             string inquiryQuestion = null,
             string inquiryAnswer = null,
+            string[] clueResponses = null,
             int miniGameAfterClue = 0,
             string miniGameTitle = null,
             string miniGameInstruction = null,
@@ -88,6 +90,7 @@ namespace LostAndFound.Cases
             CorrectAnswerExplanation = correctAnswerExplanation;
             InquiryQuestion = inquiryQuestion;
             InquiryAnswer = inquiryAnswer;
+            ClueResponses = clueResponses;
             MiniGameAfterClue = miniGameAfterClue;
             MiniGameTitle = miniGameTitle;
             MiniGameInstruction = miniGameInstruction;
