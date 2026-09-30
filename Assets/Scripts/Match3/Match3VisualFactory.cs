@@ -47,6 +47,110 @@ namespace LostAndFound.Match3
                 TokenSize);
         }
 
+        public static Sprite CreateBonusSprite(Match3BonusKind kind, out Texture2D texture)
+        {
+            Color background = kind switch
+            {
+                Match3BonusKind.Plane => new Color(0.32f, 0.72f, 0.95f),
+                Match3BonusKind.Bomb => new Color(0.96f, 0.43f, 0.26f),
+                Match3BonusKind.ColorClear => new Color(0.48f, 0.34f, 0.68f),
+                _ => new Color(0.55f, 0.55f, 0.55f)
+            };
+
+            texture = new Texture2D(TokenSize, TokenSize, TextureFormat.RGBA32, false);
+            texture.name = $"Match3Bonus_{kind}";
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+
+            Color32[] pixels = new Color32[TokenSize * TokenSize];
+            Color border = Color.Lerp(background, Color.black, 0.30f);
+
+            for (int y = 0; y < TokenSize; y++)
+            {
+                for (int x = 0; x < TokenSize; x++)
+                {
+                    bool outer = InsideRoundedRect(x, y, 4, 4, TokenSize - 8, TokenSize - 8, 22);
+                    bool inner = InsideRoundedRect(x, y, 8, 8, TokenSize - 16, TokenSize - 16, 18);
+
+                    if (!outer)
+                    {
+                        pixels[y * TokenSize + x] = new Color32(0, 0, 0, 0);
+                        continue;
+                    }
+
+                    Color pixel = inner ? background : border;
+                    pixel = Color.Lerp(pixel, Color.white, Mathf.Clamp01((y - 48f) / 48f) * 0.14f);
+                    pixels[y * TokenSize + x] = pixel;
+                }
+            }
+
+            texture.SetPixels32(pixels);
+
+            switch (kind)
+            {
+                case Match3BonusKind.Plane:
+                    DrawPlane(texture, new Color(1f, 0.97f, 0.88f, 1f));
+                    break;
+                case Match3BonusKind.Bomb:
+                    DrawBomb(texture, new Color(1f, 0.95f, 0.82f, 1f));
+                    break;
+                case Match3BonusKind.ColorClear:
+                    DrawColorClear(texture);
+                    break;
+            }
+
+            texture.Apply();
+
+            return Sprite.Create(
+                texture,
+                new Rect(0f, 0f, TokenSize, TokenSize),
+                new Vector2(0.5f, 0.5f),
+                TokenSize);
+        }
+
+        private static void DrawPlane(Texture2D t, Color c)
+        {
+            DrawLine(t, 24, 47, 72, 47, 9, c);
+            DrawLine(t, 48, 27, 48, 68, 8, c);
+            DrawLine(t, 34, 47, 22, 36, 7, c);
+            DrawLine(t, 34, 47, 22, 58, 7, c);
+            DrawLine(t, 59, 47, 72, 39, 6, c);
+            DrawLine(t, 59, 47, 72, 55, 6, c);
+            FillCircle(t, 48, 47, 7, c);
+        }
+
+        private static void DrawBomb(Texture2D t, Color c)
+        {
+            FillCircle(t, 47, 43, 22, c);
+            DrawLine(t, 59, 61, 68, 73, 6, c);
+            DrawLine(t, 67, 72, 75, 68, 4, new Color(1f, 0.78f, 0.22f, 1f));
+            FillCircle(t, 36, 51, 5, new Color(1f, 1f, 1f, 0.65f));
+        }
+
+        private static void DrawColorClear(Texture2D t)
+        {
+            Color[] colors =
+            {
+                new Color(0.95f, 0.35f, 0.42f),
+                new Color(0.31f, 0.66f, 0.96f),
+                new Color(0.42f, 0.82f, 0.53f),
+                new Color(0.98f, 0.73f, 0.28f),
+                new Color(0.96f, 0.49f, 0.77f)
+            };
+
+            FillCircle(t, 48, 48, 25, new Color(0.12f, 0.10f, 0.16f, 1f));
+
+            for (int i = 0; i < colors.Length; i++)
+            {
+                float angle = i * Mathf.PI * 2f / colors.Length;
+                int x = 48 + Mathf.RoundToInt(Mathf.Cos(angle) * 15f);
+                int y = 48 + Mathf.RoundToInt(Mathf.Sin(angle) * 15f);
+                FillCircle(t, x, y, 8, colors[i]);
+            }
+
+            FillCircle(t, 48, 48, 7, Color.white);
+        }
+
         public static Texture2D CreateRoundedTexture(Color color, int size = 64, int radius = 16)
         {
             Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
