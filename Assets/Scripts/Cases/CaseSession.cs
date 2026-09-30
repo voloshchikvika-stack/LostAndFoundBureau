@@ -4,17 +4,31 @@ namespace LostAndFound.Cases
 {
     public static class CaseSession
     {
+        private const string SavePrefix = "LostAndFound.v2.";
         private static bool initialized;
         private static int currentCaseIndex;
         private static int completedClues;
         private static int lastClueIndex = -1;
         private static bool introSeen;
+        private static bool inquirySeen;
+        private static bool miniGameCompleted;
         private static bool pendingCluePopup;
         private static bool allCasesCompleted;
 
         public static int CurrentCaseIndex => currentCaseIndex;
         public static int CompletedClues => completedClues;
         public static bool IntroSeen => introSeen;
+        public static bool InquirySeen => inquirySeen;
+        public static bool MiniGameCompleted => miniGameCompleted;
+        public static bool MiniGameReady
+        {
+            get
+            {
+                CaseDefinition currentCase = CurrentCase;
+                return currentCase != null && currentCase.HasMiniGame &&
+                       completedClues >= currentCase.MiniGameAfterClue && !miniGameCompleted;
+            }
+        }
         public static bool AllCasesCompleted => allCasesCompleted;
         public static bool HasActiveCase => !allCasesCompleted && CurrentCase != null;
 
@@ -55,18 +69,53 @@ namespace LostAndFound.Cases
                 return;
 
             initialized = true;
-            currentCaseIndex = 0;
-            completedClues = 0;
-            lastClueIndex = -1;
-            introSeen = false;
-            pendingCluePopup = false;
-            allCasesCompleted = false;
+            currentCaseIndex = Mathf.Clamp(
+                PlayerPrefs.GetInt(SavePrefix + "CaseIndex", 0), 0,
+                Mathf.Max(0, CaseDatabase.Cases.Count - 1));
+            completedClues = PlayerPrefs.GetInt(SavePrefix + "Clues", 0);
+            lastClueIndex = PlayerPrefs.GetInt(SavePrefix + "LastClue", -1);
+            introSeen = PlayerPrefs.GetInt(SavePrefix + "Intro", 0) == 1;
+            inquirySeen = PlayerPrefs.GetInt(SavePrefix + "Inquiry", 0) == 1;
+            miniGameCompleted = PlayerPrefs.GetInt(SavePrefix + "MiniGame", 0) == 1;
+            pendingCluePopup = PlayerPrefs.GetInt(SavePrefix + "Popup", 0) == 1;
+            allCasesCompleted = PlayerPrefs.GetInt(SavePrefix + "Finished", 0) == 1;
+        }
+
+        private static void Save()
+        {
+            PlayerPrefs.SetInt(SavePrefix + "CaseIndex", currentCaseIndex);
+            PlayerPrefs.SetInt(SavePrefix + "Clues", completedClues);
+            PlayerPrefs.SetInt(SavePrefix + "LastClue", lastClueIndex);
+            PlayerPrefs.SetInt(SavePrefix + "Intro", introSeen ? 1 : 0);
+            PlayerPrefs.SetInt(SavePrefix + "Inquiry", inquirySeen ? 1 : 0);
+            PlayerPrefs.SetInt(SavePrefix + "MiniGame", miniGameCompleted ? 1 : 0);
+            PlayerPrefs.SetInt(SavePrefix + "Popup", pendingCluePopup ? 1 : 0);
+            PlayerPrefs.SetInt(SavePrefix + "Finished", allCasesCompleted ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        public static void MarkInquirySeen()
+        {
+            EnsureInitialized();
+            inquirySeen = true;
+            Save();
+        }
+
+        public static void CompleteMiniGame()
+        {
+            EnsureInitialized();
+            if (MiniGameReady)
+            {
+                miniGameCompleted = true;
+                Save();
+            }
         }
 
         public static void MarkIntroSeen()
         {
             EnsureInitialized();
             introSeen = true;
+            Save();
         }
 
         public static void CompleteCurrentSearch()
@@ -81,6 +130,7 @@ namespace LostAndFound.Cases
             completedClues++;
             pendingCluePopup = true;
             introSeen = true;
+            Save();
         }
 
         public static bool TryConsumePendingClue(out string clueText)
@@ -95,11 +145,13 @@ namespace LostAndFound.Cases
             if (currentCase == null || lastClueIndex < 0 || lastClueIndex >= currentCase.Clues.Length)
             {
                 pendingCluePopup = false;
+                Save();
                 return false;
             }
 
             clueText = currentCase.Clues[lastClueIndex];
             pendingCluePopup = false;
+            Save();
             return true;
         }
 
@@ -120,6 +172,7 @@ namespace LostAndFound.Cases
             if (nextIndex >= CaseDatabase.Cases.Count)
             {
                 allCasesCompleted = true;
+                Save();
                 return;
             }
 
@@ -127,11 +180,25 @@ namespace LostAndFound.Cases
             completedClues = 0;
             lastClueIndex = -1;
             introSeen = false;
+            inquirySeen = false;
+            miniGameCompleted = false;
             pendingCluePopup = false;
+            Save();
         }
 
         public static void ResetAllProgress()
         {
+            foreach (string suffix in new[]
+            {
+                "CaseIndex", "Clues", "LastClue", "Intro",
+                "Inquiry", "MiniGame", "Popup", "Finished"
+            })
+            {
+                PlayerPrefs.DeleteKey(SavePrefix + suffix);
+            }
+
+            BureauEconomy.ResetEverything();
+            PlayerPrefs.Save();
             initialized = false;
             EnsureInitialized();
         }
