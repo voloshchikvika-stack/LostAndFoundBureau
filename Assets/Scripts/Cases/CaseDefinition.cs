@@ -8,6 +8,7 @@ namespace LostAndFound.Cases
         public bool BombsEnabled { get; }
         public bool PlanesEnabled { get; }
         public bool RocketsEnabled { get; }
+        public bool ColorClearEnabled { get; }
 
         public Match3LevelDefinition(
             int moves,
@@ -15,7 +16,8 @@ namespace LostAndFound.Cases
             int targetCount,
             bool bombsEnabled = false,
             bool planesEnabled = false,
-            bool rocketsEnabled = false)
+            bool rocketsEnabled = false,
+            bool colorClearEnabled = false)
         {
             Moves = moves;
             TargetType = targetType;
@@ -23,6 +25,7 @@ namespace LostAndFound.Cases
             BombsEnabled = bombsEnabled;
             PlanesEnabled = planesEnabled;
             RocketsEnabled = rocketsEnabled;
+            ColorClearEnabled = colorClearEnabled;
         }
     }
 
