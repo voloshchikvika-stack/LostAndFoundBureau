@@ -8,6 +8,7 @@ namespace LostAndFound.Cases
         private enum BureauMode
         {
             ClientIntro,
+            CaseDetails,
             Desk,
             CaseFile,
             Answers,
@@ -21,8 +22,6 @@ namespace LostAndFound.Cases
         private BureauMode mode;
         private BureauMode previousMode;
         private CaseDefinition currentCase;
-        private string[] storyPages = new string[0];
-        private int storyPageIndex;
         private int miniGameStep;
         private bool[] miniGamePicked = new bool[0];
         private string miniGameFeedback = "";
@@ -136,9 +135,6 @@ namespace LostAndFound.Cases
 
             clientImage = Resources.Load<Texture2D>($"Cases/{currentCase.Id}/Client");
             lostItemImage = Resources.Load<Texture2D>($"Cases/{currentCase.Id}/LostItem");
-            storyPages = (currentCase.Story ?? "").Split(
-                new[] { "\n\n" }, System.StringSplitOptions.None);
-            storyPageIndex = 0;
             miniGameStep = 0;
             miniGamePicked = new bool[currentCase.MiniGameCards == null ? 0 : currentCase.MiniGameCards.Length];
             miniGameFeedback = "";
@@ -253,6 +249,9 @@ namespace LostAndFound.Cases
             {
                 case BureauMode.ClientIntro:
                     DrawClientIntro(scale);
+                    break;
+                case BureauMode.CaseDetails:
+                    DrawCaseDetails(scale);
                     break;
                 case BureauMode.Desk:
                     DrawDeskMode(scale);
@@ -403,51 +402,86 @@ namespace LostAndFound.Cases
         private void DrawClientIntro(float scale)
         {
             DrawCaseFolderOnDesk(scale, false);
-
             DrawSpeechBubble(
                 R(560, 120, 1160, 515, scale),
                 R(535, 525, 82, 70, scale),
                 scale);
 
-            Color darkCoffee = new Color(0.21f, 0.14f, 0.11f);
-            Color mediumCoffee = new Color(0.47f, 0.30f, 0.20f);
-            GUIStyle nameStyle = LabelStyle(22, FontStyle.Bold, TextAnchor.MiddleLeft, scale, darkCoffee);
-            GUIStyle itemStyle = LabelStyle(15, FontStyle.Bold, TextAnchor.MiddleRight, scale, mediumCoffee);
-            GUIStyle storyStyle = LabelStyle(19, FontStyle.Normal, TextAnchor.UpperLeft, scale, darkCoffee);
-            GUIStyle pageStyle = LabelStyle(15, FontStyle.Normal, TextAnchor.MiddleLeft, scale, mediumCoffee);
-            GUIStyle buttonStyle = ButtonStyle(19, scale);
+            Color darkCoffee = new Color(0.24f, 0.16f, 0.12f);
+            Color mediumCoffee = new Color(0.49f, 0.32f, 0.22f);
 
-            GUI.Label(R(625, 158, 310, 34, scale), currentCase.ClientName.ToUpperInvariant(), nameStyle);
-            GUI.Label(R(930, 160, 710, 30, scale), $"ПОТЕРЯНО: {currentCase.LostItemName.ToUpperInvariant()}", itemStyle);
-            GUI.DrawTexture(R(625, 205, 1030, 2, scale), accentTexture);
+            GUIStyle nameStyle = LabelStyle(25, FontStyle.Bold, TextAnchor.MiddleLeft, scale, darkCoffee);
+            GUIStyle itemStyle = LabelStyle(16, FontStyle.Bold, TextAnchor.MiddleRight, scale, mediumCoffee);
+            GUIStyle introStyle = LabelStyle(24, FontStyle.Normal, TextAnchor.UpperLeft, scale, darkCoffee);
+            GUIStyle helperStyle = LabelStyle(16, FontStyle.Normal, TextAnchor.MiddleLeft, scale, mediumCoffee);
+            GUIStyle buttonStyle = ButtonStyle(20, scale);
 
-            string page = storyPages.Length > 0
-                ? storyPages[Mathf.Clamp(storyPageIndex, 0, storyPages.Length - 1)] : currentCase.Story;
-            GUI.Label(R(625, 232, 1030, 250, scale), page, storyStyle);
+            GUI.Label(R(625, 163, 375, 42, scale), currentCase.ClientName, nameStyle);
+            GUI.Label(R(980, 168, 660, 32, scale),
+                currentCase.LostItemName.ToUpperInvariant(), itemStyle);
+            GUI.DrawTexture(R(625, 215, 1030, 2, scale), accentTexture);
 
-            bool hasMorePages = storyPageIndex < storyPages.Length - 1;
-            GUI.Label(R(625, 485, 320, 28, scale),
-                $"СТРАНИЦА {storyPageIndex + 1}/{Mathf.Max(1, storyPages.Length)}", pageStyle);
+            GUI.Label(R(625, 257, 715, 195, scale), currentCase.ShortIntro, introStyle);
+            DrawLostItemPreview(scale, 1410, 249, 210, 190);
 
-            if (hasMorePages)
+            GUI.Label(R(625, 480, 900, 30, scale),
+                "Можно сразу начать поиск или узнать подробности.", helperStyle);
+
+            if (GUI.Button(R(775, 542, 340, 64, scale), "НАЧАТЬ ПОИСК", buttonStyle))
+                BeginSearch();
+
+            if (GUI.Button(R(1160, 542, 340, 64, scale), "ПОДРОБНЕЕ", buttonStyle))
+                mode = BureauMode.CaseDetails;
+        }
+
+        private void DrawCaseDetails(float scale)
+        {
+            DrawCaseFolderOnDesk(scale, false);
+            DrawSpeechBubble(
+                R(560, 120, 1160, 515, scale),
+                R(535, 525, 82, 70, scale),
+                scale);
+
+            Color darkCoffee = new Color(0.24f, 0.16f, 0.12f);
+            Color mediumCoffee = new Color(0.49f, 0.32f, 0.22f);
+            GUIStyle heading = LabelStyle(24, FontStyle.Bold, TextAnchor.MiddleLeft, scale, darkCoffee);
+            GUIStyle story = LabelStyle(19, FontStyle.Normal, TextAnchor.UpperLeft, scale, darkCoffee);
+            GUIStyle button = ButtonStyle(17, scale);
+
+            GUI.Label(R(625, 158, 850, 44, scale), currentCase.ClientName + " · Подробности", heading);
+            GUI.DrawTexture(R(625, 209, 1030, 2, scale), accentTexture);
+            GUI.Label(R(625, 236, 1010, 280, scale), currentCase.Story, story);
+
+            if (GUI.Button(R(665, 541, 255, 62, scale), "НАЗАД", button))
+                mode = BureauMode.ClientIntro;
+
+            if (!string.IsNullOrEmpty(currentCase.InquiryQuestion))
             {
-                if (GUI.Button(R(940, 535, 400, 64, scale), "ПРОДОЛЖИТЬ", buttonStyle))
-                    storyPageIndex++;
-                return;
+                if (GUI.Button(R(962, 541, 295, 62, scale), "ЗАДАТЬ ВОПРОС", button))
+                    mode = BureauMode.Inquiry;
             }
 
-            if (!string.IsNullOrEmpty(currentCase.InquiryQuestion) && !CaseSession.InquirySeen)
-            {
-                if (GUI.Button(R(770, 535, 360, 64, scale), "НАЧАТЬ ПОИСК", buttonStyle))
-                    BeginSearch();
+            if (GUI.Button(R(1300, 541, 320, 62, scale), "НАЧАТЬ ПОИСК", button))
+                BeginSearch();
+        }
 
-                if (GUI.Button(R(1150, 535, 360, 64, scale), "ЗАДАТЬ ВОПРОС", buttonStyle))
-                    mode = BureauMode.Inquiry;
+        private void DrawLostItemPreview(float scale, float x, float y, float width, float height)
+        {
+            Rect preview = R(x, y, width, height, scale);
+            DrawNineSlice(preview, folderPaperTexture, 20);
+
+            if (lostItemImage != null)
+            {
+                GUI.DrawTexture(
+                    R(x + 14, y + 12, width - 28, height - 24, scale),
+                    lostItemImage, ScaleMode.ScaleToFit, true);
             }
             else
             {
-                if (GUI.Button(R(940, 535, 400, 64, scale), "НАЧАТЬ ПОИСК", buttonStyle))
-                    BeginSearch();
+                Color ink = new Color(0.46f, 0.32f, 0.23f);
+                GUIStyle placeholder = LabelStyle(16, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+                GUI.Label(R(x + 20, y + 20, width - 40, height - 40, scale),
+                    currentCase.LostItemName, placeholder);
             }
         }
 
@@ -461,16 +495,19 @@ namespace LostAndFound.Cases
         {
             DrawCaseFolderOnDesk(scale, false);
             DrawSpeechBubble(R(575, 155, 1100, 440, scale), R(540, 500, 82, 70, scale), scale);
-            Color dark = new Color(0.23f, 0.15f, 0.11f);
-            GUIStyle heading = LabelStyle(24, FontStyle.Bold, TextAnchor.MiddleLeft, scale, dark);
-            GUIStyle body = LabelStyle(20, FontStyle.Normal, TextAnchor.UpperLeft, scale, dark);
+
+            Color darkCoffee = new Color(0.23f, 0.15f, 0.11f);
+            GUIStyle heading = LabelStyle(24, FontStyle.Bold, TextAnchor.MiddleLeft, scale, darkCoffee);
+            GUIStyle body = LabelStyle(20, FontStyle.Normal, TextAnchor.UpperLeft, scale, darkCoffee);
             GUIStyle button = ButtonStyle(18, scale);
+
             GUI.Label(R(640, 187, 960, 48, scale), currentCase.InquiryQuestion, heading);
-            GUI.Label(R(640, 265, 960, 200, scale), currentCase.InquiryAnswer, body);
+            GUI.Label(R(640, 265, 960, 195, scale), currentCase.InquiryAnswer, body);
+
             if (GUI.Button(R(905, 497, 390, 64, scale), "ВЕРНУТЬСЯ", button))
             {
                 CaseSession.MarkInquirySeen();
-                mode = BureauMode.ClientIntro;
+                mode = BureauMode.CaseDetails;
             }
         }
 
