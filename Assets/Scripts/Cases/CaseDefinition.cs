@@ -32,6 +32,7 @@ namespace LostAndFound.Cases
         public string ClientName { get; }
         public string LostItemName { get; }
         public string Story { get; }
+        public string ShortIntro { get; }
         public string[] Clues { get; }
         public Match3LevelDefinition[] Levels { get; }
         public string[] AnswerOptions { get; }
@@ -75,12 +76,14 @@ namespace LostAndFound.Cases
             string miniGameInstruction = null,
             string[] miniGameCards = null,
             int[] miniGameCorrectOrder = null,
-            string miniGameResult = null)
+            string miniGameResult = null,
+            string shortIntro = null)
         {
             Id = id;
             ClientName = clientName;
             LostItemName = lostItemName;
             Story = story;
+            ShortIntro = string.IsNullOrEmpty(shortIntro) ? story : shortIntro;
             Clues = clues;
             Levels = levels;
             AnswerOptions = answerOptions;
