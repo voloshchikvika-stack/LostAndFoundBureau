@@ -1334,10 +1334,19 @@ namespace LostAndFound.Cases
                 DrawNineSlice(R(350, y, 1200, 83, scale),
                     speechBubbleTexture, 20);
 
+                Texture2D souvenir = collected
+                    ? Resources.Load<Texture2D>("Cases/" + entry.Id + "/LostItem")
+                    : null;
+
+                if (souvenir != null)
+                    GUI.DrawTexture(R(370, y + 6, 70, 70, scale),
+                        souvenir, ScaleMode.ScaleToFit, true);
+
                 string label = collected
                     ? $"✦ ДЕЛО №{index + 1:000} · {entry.LostItemName}"
                     : $"◇ ДЕЛО №{index + 1:000} · ЗАКРЫТО";
-                GUI.Label(R(390, y + 16, 1040, 48, scale),
+
+                GUI.Label(R(470, y + 16, 1000, 48, scale),
                     label, collected ? subtitle : body);
             }
 
@@ -1405,7 +1414,7 @@ namespace LostAndFound.Cases
             }
 
             GUI.Label(R(460, 767, 1050, 63, scale),
-                "Репутация растёт после первого завершения каждого дела. " +
+                "За повышение репутации вы получаете набор из четырёх бонусов. " +
                 "Правильные ответы дают больше очков.", body);
 
             if (GUI.Button(R(755, 862, 410, 66, scale),
