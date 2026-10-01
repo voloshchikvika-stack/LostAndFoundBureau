@@ -846,7 +846,7 @@ namespace LostAndFound.Cases
             {
                 string repReward = reactionWasCorrect
                     ? "+18 репутации" : "+8 репутации";
-                string cardNotice = reactionWasCorrect &&
+                string cardNotice =
                     BureauEconomy.IsCollectibleCase(CaseSession.CurrentCaseIndex)
                     ? " · карточка в коллекции" : "";
 
@@ -1309,7 +1309,7 @@ namespace LostAndFound.Cases
                 "КОЛЛЕКЦИЯ ПАМЯТНЫХ ИСТОРИЙ", title);
             GUI.Label(R(350, 213, 1110, 53, scale),
                 $"Собрано {BureauEconomy.CollectedCount}/{BureauEconomy.CollectibleTotal} " +
-                "памятных карточек. Для открытия нужна правильная разгадка.", body);
+                "памятных карточек. Завершайте особые дела, чтобы пополнять коллекцию.", body);
 
             int maxPage = Mathf.Max(0,
                 (BureauEconomy.CollectibleTotal - 1) / 5);
