@@ -130,7 +130,7 @@ namespace LostAndFound.Match3
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         public bool DebugSkipAndGrantClue()
         {
-            if (finishFlowStarted || CaseSession.CurrentCase == null ||
+            if ((finishFlowStarted && levelWon) || CaseSession.CurrentCase == null ||
                 CaseSession.CompletedClues >= CaseSession.CurrentCase.RequiredClues)
                 return false;
 
