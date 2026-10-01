@@ -262,6 +262,16 @@ namespace LostAndFound.Cases
             return false;
         }
 
+        public static int OwnedEquipmentCount(string roomId)
+        {
+            int count = 0;
+            foreach (BureauUpgrade item in equipment)
+                if (EquipmentRoomId(item.Id) == roomId &&
+                    OwnsEquipment(item.Id))
+                    count++;
+            return count;
+        }
+
         public static string EquipmentRoomId(string equipmentId)
         {
             if (equipmentId.StartsWith("Photo")) return "PhotoLab";
