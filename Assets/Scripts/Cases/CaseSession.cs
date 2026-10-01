@@ -242,6 +242,29 @@ namespace LostAndFound.Cases
             Save();
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Test-only navigation. Keep earned coins and unlocked rooms, but begin
+        // the selected case from its introduction with no collected evidence.
+        public static bool DebugSelectCase(int caseIndex)
+        {
+            EnsureInitialized();
+
+            if (CaseDatabase.GetCase(caseIndex) == null)
+                return false;
+
+            currentCaseIndex = caseIndex;
+            completedClues = 0;
+            lastClueIndex = -1;
+            introSeen = false;
+            inquirySeen = false;
+            miniGameCompleted = false;
+            pendingCluePopup = false;
+            allCasesCompleted = false;
+            Save();
+            return true;
+        }
+#endif
+
         public static void ResetAllProgress()
         {
             foreach (string suffix in new[]
