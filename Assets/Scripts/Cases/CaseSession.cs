@@ -79,6 +79,23 @@ namespace LostAndFound.Cases
             miniGameCompleted = PlayerPrefs.GetInt(SavePrefix + "MiniGame", 0) == 1;
             pendingCluePopup = PlayerPrefs.GetInt(SavePrefix + "Popup", 0) == 1;
             allCasesCompleted = PlayerPrefs.GetInt(SavePrefix + "Finished", 0) == 1;
+
+            // An earlier build ended after two clients. Continue completed
+            // saves with the newly-added third case instead of getting stuck
+            // on the old "all cases finished" screen.
+            if (allCasesCompleted && currentCaseIndex == 1 &&
+                CaseDatabase.Cases.Count > 2)
+            {
+                currentCaseIndex = 2;
+                completedClues = 0;
+                lastClueIndex = -1;
+                introSeen = false;
+                inquirySeen = false;
+                miniGameCompleted = false;
+                pendingCluePopup = false;
+                allCasesCompleted = false;
+                Save();
+            }
         }
 
         private static void Save()
