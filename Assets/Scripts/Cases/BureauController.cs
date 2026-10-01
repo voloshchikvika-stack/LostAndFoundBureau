@@ -970,14 +970,29 @@ namespace LostAndFound.Cases
 
             if (mode == BureauMode.Room)
             {
-                DrawNineSlice(R(475, 704, 970, 276, scale),
+                DrawNineSlice(R(475, 700, 970, 280, scale),
                     folderPaperTexture, 22);
-                GUI.Label(R(530, 735, 860, 57, scale),
-                    "ОТДЕЛ ОТКРЫТ", heading);
-                GUI.Label(R(530, 811, 860, 98, scale),
-                    "Теперь это помещение доступно в вашем бюро. " +
-                    "Как только в деле понадобится исследование, " +
-                    "вы сможете выполнить его здесь.", body);
+
+                bool neededForCase = currentCase != null &&
+                    CaseSession.MiniGameReady &&
+                    currentCase.RoomId == activeRoomId;
+
+                GUI.Label(R(530, 727, 860, 57, scale),
+                    neededForCase ? "НОВОЕ ЗАДАНИЕ ПО ДЕЛУ" : "ОТДЕЛ ОТКРЫТ",
+                    heading);
+
+                GUI.Label(R(530, 794, 860, 78, scale),
+                    neededForCase
+                        ? $"Для дела «{currentCase.LostItemName}» здесь появилось новое исследование."
+                        : "Помещение доступно в вашем бюро. " +
+                          "Задания клиентов будут появляться здесь по мере расследований.",
+                    body);
+
+                if (neededForCase &&
+                    GUI.Button(R(760, 889, 400, 65, scale),
+                        "НАЧАТЬ ИССЛЕДОВАНИЕ", button))
+                    StartMiniGame();
+
                 return;
             }
 
