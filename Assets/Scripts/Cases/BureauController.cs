@@ -32,6 +32,8 @@ namespace LostAndFound.Cases
         private string activeRoomId;
         private BureauMode roomReturnMode;
         private bool temporaryRoomAccess;
+        private int[] assemblySlots = { -1, -1, -1 };
+        private int selectedFragment = -1;
 
         private Texture2D officeBackground;
         private Texture2D clientImage;
@@ -1073,6 +1075,10 @@ namespace LostAndFound.Cases
             miniGameStep = 0;
             miniGameFeedback = "";
             miniGamePicked = new bool[currentCase.MiniGameCards.Length];
+            selectedFragment = -1;
+            assemblySlots = new int[currentCase.MiniGameCards.Length];
+            for (int i = 0; i < assemblySlots.Length; i++)
+                assemblySlots[i] = -1;
         }
 
         private void DrawMiniGame(float scale)
@@ -1099,7 +1105,15 @@ namespace LostAndFound.Cases
 
             bool solved = CaseSession.MiniGameCompleted;
 
-            if (!solved)
+            if (!solved && currentCase.MiniGameMode == "Spot")
+            {
+                DrawPhotoPuzzle(scale, button, body);
+            }
+            else if (!solved && currentCase.MiniGameMode == "Assembly")
+            {
+                DrawRestorationPuzzle(scale, button, body);
+            }
+            else if (!solved)
             {
                 GUI.Label(R(595, 516, 730, 34, scale),
                     $"Выбрано по порядку: {miniGameStep}/{miniGamePicked.Length}", progress);
@@ -1150,6 +1164,98 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(755, 940, 410, 59, scale),
                 solved ? "ВЕРНУТЬСЯ К ДЕЛУ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
                 mode = BureauMode.CaseFile;
+        }
+
+        private void DrawPhotoPuzzle(float scale, GUIStyle button, GUIStyle body)
+        {
+            for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
+            {
+                if (GUI.Button(R(470, 555 + i * 100, 980, 82, scale),
+                    currentCase.MiniGameCards[i], button))
+                {
+                    if (i == currentCase.MiniGameCorrectOrder[0])
+                    {
+                        CaseSession.CompleteMiniGame();
+                        miniGameFeedback = currentCase.MiniGameResult;
+                    }
+                    else
+                        miniGameFeedback = "Этот кадр не объясняет обрыв ремешка. " +
+                            "Поищите снимок, где виден момент потери.";
+                }
+            }
+
+            GUI.Label(R(510, 860, 900, 52, scale), miniGameFeedback, body);
+        }
+
+        private void DrawRestorationPuzzle(float scale, GUIStyle button, GUIStyle body)
+        {
+            Color ink = new Color(0.38f, 0.25f, 0.17f);
+            GUIStyle hint = LabelStyle(16, FontStyle.Bold,
+                TextAnchor.MiddleCenter, scale, ink);
+
+            GUI.Label(R(490, 516, 940, 33, scale),
+                "1. Выберите фрагмент в верхнем ряду. " +
+                "2. Поместите его в нужное место в нижнем ряду.", hint);
+
+            for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
+            {
+                string label = (selectedFragment == i ? "● " : "") +
+                    currentCase.MiniGameCards[i];
+
+                if (GUI.Button(R(412 + i * 371, 566, 346, 88, scale), label, button))
+                    selectedFragment = i;
+            }
+
+            for (int slot = 0; slot < assemblySlots.Length; slot++)
+            {
+                int item = assemblySlots[slot];
+                string label = item < 0
+                    ? $"МЕСТО {slot + 1} · ПУСТО"
+                    : $"{slot + 1}. {currentCase.MiniGameCards[item]}";
+
+                if (GUI.Button(R(412 + slot * 371, 680, 346, 92, scale), label, button))
+                {
+                    if (selectedFragment >= 0)
+                    {
+                        for (int n = 0; n < assemblySlots.Length; n++)
+                        {
+                            if (assemblySlots[n] == selectedFragment)
+                                assemblySlots[n] = -1;
+                        }
+
+                        assemblySlots[slot] = selectedFragment;
+                        selectedFragment = -1;
+
+                        bool complete = true;
+                        bool correct = true;
+
+                        for (int n = 0; n < assemblySlots.Length; n++)
+                        {
+                            complete &= assemblySlots[n] >= 0;
+                            correct &= assemblySlots[n] == currentCase.MiniGameCorrectOrder[n];
+                        }
+
+                        if (complete && correct)
+                        {
+                            CaseSession.CompleteMiniGame();
+                            miniGameFeedback = currentCase.MiniGameResult;
+                        }
+                        else if (complete)
+                            miniGameFeedback = "Фрагменты пока не сложились в адрес. " +
+                                "Выберите фрагмент и поменяйте его место.";
+                        else
+                            miniGameFeedback = "Продолжайте восстанавливать расписку.";
+                    }
+                    else if (item >= 0)
+                    {
+                        // Take a fragment back out to change the arrangement.
+                        selectedFragment = item;
+                        assemblySlots[slot] = -1;
+                    }
+                }
+            }
+
+            GUI.Label(R(510, 823, 900, 94, scale), miniGameFeedback, body);
         }
 
         private void DrawFinished(float scale)
