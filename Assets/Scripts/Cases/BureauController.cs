@@ -869,45 +869,149 @@ namespace LostAndFound.Cases
 
         private void DrawShop(float scale)
         {
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture);
-            DrawNineSlice(R(280, 115, 1360, 860, scale), folderPaperTexture, 20);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height),
+                overlayTexture, ScaleMode.StretchToFill);
+            DrawNineSlice(R(270, 100, 1380, 860, scale), folderPaperTexture, 20);
+
             Color ink = new Color(0.27f, 0.17f, 0.11f);
-            GUIStyle title = LabelStyle(35, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle sub = LabelStyle(19, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle itemTitle = LabelStyle(23, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle button = ButtonStyle(18, scale);
+            GUIStyle title = LabelStyle(34, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle body = LabelStyle(18, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle name = LabelStyle(23, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle button = ButtonStyle(17, scale);
 
-            GUI.Label(R(350, 155, 700, 60, scale), "ОБУСТРОЙСТВО БЮРО", title);
-            GUI.Label(R(1120, 160, 370, 52, scale), $"Монеты: {BureauEconomy.Coins}", itemTitle);
-            GUI.Label(R(350, 220, 1190, 40, scale),
-                "Купленные предметы появляются в интерьере бюро.", sub);
+            GUI.Label(R(335, 138, 750, 52, scale), "РАЗВИТИЕ БЮРО", title);
+            GUI.Label(R(1170, 140, 350, 50, scale), $"Монеты: {BureauEconomy.Coins}", name);
+            GUI.Label(R(335, 204, 1120, 40, scale),
+                "Открывайте отделы, чтобы исследовать снимки, документы и предметы.", body);
 
-            int index = 0;
+            int i = 0;
             foreach (BureauUpgrade upgrade in BureauEconomy.Upgrades)
             {
-                float y = 285f + index * 138f;
-                DrawNineSlice(R(340, y, 1240, 126, scale), speechBubbleTexture, 24);
-                GUI.Label(R(375, y + 15, 760, 40, scale), upgrade.Name, itemTitle);
-                GUI.Label(R(375, y + 62, 760, 40, scale), upgrade.Description, sub);
+                float y = 270f + i * 190f;
+                DrawNineSlice(R(325, y, 1260, 177, scale), speechBubbleTexture, 20);
+                Texture2D icon = Resources.Load<Texture2D>(
+                    "Bureau/Rooms/" + upgrade.Id + "/Icon");
 
-                if (BureauEconomy.Owns(upgrade.Id))
-                {
-                    GUI.Label(R(1280, y + 41, 245, 48, scale), "КУПЛЕНО", itemTitle);
-                }
+                if (icon != null)
+                    GUI.DrawTexture(R(345, y + 13, 158, 149, scale),
+                        icon, ScaleMode.ScaleToFit, true);
                 else
+                    DrawNineSlice(R(350, y + 20, 142, 130, scale), folderTexture, 18);
+
+                GUI.Label(R(530, y + 20, 665, 43, scale), upgrade.Name, name);
+                GUI.Label(R(530, y + 74, 645, 83, scale), upgrade.Description, body);
+
+                bool owned = BureauEconomy.Owns(upgrade.Id);
+                GUI.enabled = owned || BureauEconomy.Coins >= upgrade.Price;
+                string caption = owned ? "ПОСЕТИТЬ" :
+                    $"ОТКРЫТЬ · {upgrade.Price} МОНЕТ";
+
+                if (GUI.Button(R(1220, y + 53, 315, 67, scale), caption, button))
                 {
-                    GUI.enabled = BureauEconomy.Coins >= upgrade.Price;
-                    if (GUI.Button(R(1220, y + 30, 310, 65, scale),
-                        $"КУПИТЬ · {upgrade.Price} ◈", button))
-                        BureauEconomy.TryBuy(upgrade);
-                    GUI.enabled = true;
+                    if (owned || BureauEconomy.TryBuy(upgrade))
+                    {
+                        activeRoomId = upgrade.Id;
+                        roomReturnMode = BureauMode.Shop;
+                        temporaryRoomAccess = false;
+                        mode = BureauMode.Room;
+                        GUI.enabled = true;
+                        return;
+                    }
                 }
 
-                index++;
+                GUI.enabled = true;
+                i++;
             }
 
-            if (GUI.Button(R(760, 865, 400, 67, scale), "ВЕРНУТЬСЯ", button))
+            if (GUI.Button(R(760, 861, 400, 68, scale), "ВЕРНУТЬСЯ", button))
                 CloseOverlay();
+        }
+
+        private static string RoomName(string roomId)
+        {
+            switch (roomId)
+            {
+                case "PhotoLab": return "Фотолаборатория";
+                case "ArchiveRoom": return "Архив документов";
+                case "Workshop": return "Мастерская находок";
+                default: return "Отдел расследований";
+            }
+        }
+
+        private void DrawRoomScene(float scale)
+        {
+            Texture2D background = Resources.Load<Texture2D>(
+                "Bureau/Rooms/" + activeRoomId + "/Background");
+
+            if (background != null)
+                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
+                    background, ScaleMode.ScaleAndCrop, true);
+            else
+                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
+                    wallTexture, ScaleMode.StretchToFill);
+
+            Color ink = new Color(0.27f, 0.17f, 0.11f);
+            GUIStyle heading = LabelStyle(31, FontStyle.Bold,
+                TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle body = LabelStyle(19, FontStyle.Normal,
+                TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle button = ButtonStyle(18, scale);
+
+            DrawNineSlice(R(615, 24, 690, 76, scale), speechBubbleTexture, 24);
+            GUI.Label(R(645, 33, 630, 53, scale), RoomName(activeRoomId), heading);
+
+            if (GUI.Button(R(42, 33, 245, 62, scale), "← НАЗАД", button))
+            {
+                mode = roomReturnMode;
+                return;
+            }
+
+            if (mode == BureauMode.Room)
+            {
+                DrawNineSlice(R(475, 704, 970, 276, scale),
+                    folderPaperTexture, 22);
+                GUI.Label(R(530, 735, 860, 57, scale),
+                    "ОТДЕЛ ОТКРЫТ", heading);
+                GUI.Label(R(530, 811, 860, 98, scale),
+                    "Теперь это помещение доступно в вашем бюро. " +
+                    "Как только в деле понадобится исследование, " +
+                    "вы сможете выполнить его здесь.", body);
+                return;
+            }
+
+            if (!BureauEconomy.Owns(activeRoomId) && !temporaryRoomAccess)
+            {
+                DrawNineSlice(R(445, 645, 1030, 355, scale),
+                    folderPaperTexture, 22);
+                GUI.Label(R(495, 682, 930, 57, scale),
+                    "ОТКРЫТЬ ОТДЕЛ", heading);
+                GUI.Label(R(520, 748, 880, 75, scale),
+                    "Это помещение понадобится для дела " +
+                    currentCase.ClientName + ". Можно купить его " +
+                    "навсегда или пройти текущий сюжет по временному пропуску.",
+                    body);
+
+                foreach (BureauUpgrade upgrade in BureauEconomy.Upgrades)
+                {
+                    if (upgrade.Id != activeRoomId)
+                        continue;
+
+                    GUI.enabled = BureauEconomy.Coins >= upgrade.Price;
+                    if (GUI.Button(R(520, 859, 425, 73, scale),
+                        $"ОТКРЫТЬ · {upgrade.Price} МОНЕТ", button))
+                        BureauEconomy.TryBuy(upgrade);
+                    GUI.enabled = true;
+                    break;
+                }
+
+                if (GUI.Button(R(980, 859, 425, 73, scale),
+                    "ПО ДЕЛУ · БЕСПЛАТНО", button))
+                    temporaryRoomAccess = true;
+
+                return;
+            }
+
+            DrawMiniGame(scale);
         }
 
         private void DrawArchive(float scale)
