@@ -358,10 +358,10 @@ namespace LostAndFound.Cases
                         ? new[] { "Sequence", "Catalog", "CrossCheck", "Code" }[challenge]
                         : new[] { "Assembly", "Repair", "Pair", "Restore" }[challenge];
 
+                bool pairPuzzle = mode == "CrossCheck" || mode == "Pair";
                 bool selectOne = mode == "Spot" || mode == "Compare" ||
                                  mode == "Focus" || mode == "Catalog" ||
-                                 mode == "CrossCheck" || mode == "Repair" ||
-                                 mode == "Pair";
+                                 mode == "Repair";
                 string taskTitle = room == "PhotoLab"
                     ? new[] { "Изучить кадры", "Сравнить снимки",
                               "Найти деталь при увеличении", "Разложить кадры" }[challenge]
@@ -371,8 +371,17 @@ namespace LostAndFound.Cases
                         : new[] { "Собрать документ", "Выбрать подходящий фрагмент",
                                   "Найти совпадающие детали", "Восстановить записку" }[challenge];
 
-                string[] puzzleOptions = selectOne
+                string[] puzzleOptions = pairPuzzle
                     ? new[]
+                    {
+                        "Материал А · неподтверждённое сообщение: " + pattern.OtherA + ".",
+                        "Материал Б · отметка №" + tracking +
+                            " связана с местом «" + pattern.Place + "».",
+                        "Материал В · предположение о месте «" + pattern.OtherB + "».",
+                        "Материал Г · независимая проверка: " + pattern.RoomHint
+                    }
+                    : selectOne
+                        ? new[]
                     {
                         "Запись А · след ведёт к месту «" + pattern.OtherA + "».",
                         "Запись Б · " + pattern.RoomHint,
@@ -469,13 +478,17 @@ namespace LostAndFound.Cases
                         },
                     miniGameAfterClue: caseClues.Length,
                     miniGameTitle: taskTitle + " · дело №" + caseTag,
-                    miniGameInstruction: selectOne
-                        ? "Выберите материал, который подтверждает место пропажи."
-                        : "Расположите три фрагмента в логической последовательности.",
+                    miniGameInstruction: pairPuzzle
+                        ? "Выберите ДВА материала, которые подтверждают одно и то же место."
+                        : selectOne
+                            ? "Выберите материал, который подтверждает место пропажи."
+                            : "Расположите три фрагмента в логической последовательности.",
                     miniGameCards: puzzleOptions,
-                    miniGameCorrectOrder: selectOne
-                        ? new[] { 1 }
-                        : new[] { 1, 2, 0 },
+                    miniGameCorrectOrder: pairPuzzle
+                        ? new[] { 1, 3 }
+                        : selectOne
+                            ? new[] { 1 }
+                            : new[] { 1, 2, 0 },
                     miniGameResult: room == "PhotoLab"
                         ? "Фотолаборатория. " + pattern.RoomHint
                         : room == "ArchiveRoom"
