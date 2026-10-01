@@ -14,6 +14,7 @@ namespace LostAndFound.Cases
             Answers,
             Inquiry,
             MiniGame,
+            Room,
             Shop,
             Archive,
             ResetConfirm,
@@ -28,6 +29,9 @@ namespace LostAndFound.Cases
         private string miniGameFeedback = "";
         private int archiveDetailIndex = -1;
         private int lastReward;
+        private string activeRoomId;
+        private BureauMode roomReturnMode;
+        private bool temporaryRoomAccess;
 
         private Texture2D officeBackground;
         private Texture2D clientImage;
@@ -232,6 +236,14 @@ namespace LostAndFound.Cases
             float scale = Mathf.Min(Screen.width / 1920f, Screen.height / 1080f);
             scale = Mathf.Clamp(scale, 0.65f, 2.5f);
 
+            if (mode == BureauMode.Room || mode == BureauMode.MiniGame)
+            {
+                GUI.enabled = !cluePopupVisible && !reactionVisible;
+                DrawRoomScene(scale);
+                GUI.enabled = true;
+                return;
+            }
+
             DrawOffice(scale);
             bool canInteract = !cluePopupVisible && !reactionVisible;
             GUI.enabled = canInteract;
@@ -350,8 +362,6 @@ namespace LostAndFound.Cases
                 GUI.DrawTexture(R(0, 795, 1920, 285, scale), deskTexture);
                 GUI.DrawTexture(R(0, 790, 1920, 18, scale), deskEdgeTexture);
             }
-
-            DrawPurchasedDecor(scale);
 
             if (officeBackground == null)
             {
@@ -652,7 +662,8 @@ namespace LostAndFound.Cases
 
             if (CaseSession.MiniGameReady)
             {
-                if (GUI.Button(R(1060, 835, 495, 58, scale), "ВОССТАНОВИТЬ ХРОНОЛОГИЮ", buttonStyle))
+                if (GUI.Button(R(960, 835, 595, 58, scale),
+                    "ПЕРЕЙТИ: " + RoomName(currentCase.RoomId).ToUpperInvariant(), buttonStyle))
                     StartMiniGame();
             }
             else if (CaseSession.HasAllClues)
@@ -771,7 +782,7 @@ namespace LostAndFound.Cases
             DrawNineSlice(R(1315, 20, 150, 58, scale), speechBubbleTexture, 24);
             GUI.Label(R(1330, 29, 120, 38, scale), $"{BureauEconomy.Coins} ◈", info);
 
-            if (GUI.Button(R(1485, 20, 175, 58, scale), "МАГАЗИН", button))
+            if (GUI.Button(R(1485, 20, 175, 58, scale), "ОТДЕЛЫ", button))
                 OpenOverlay(BureauMode.Shop);
 
             if (GUI.Button(R(1678, 20, 200, 58, scale), "АРХИВ", button))
