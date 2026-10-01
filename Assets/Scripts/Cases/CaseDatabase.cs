@@ -342,7 +342,7 @@ namespace LostAndFound.Cases
                 int levelNumber = index + 1;
                 StoryPattern pattern = Patterns[(index - authoredCases.Length) % Patterns.Length];
                 string client = Names[(index * 7 + 3) % Names.Length];
-                string caseTag = levelNumber.ToString("000");
+                string caseTag = levelNumber.ToString("00");
                 string tracking = "Н-" + (2000 + index * 37).ToString();
                 string room = index % 3 == 0 ? "PhotoLab" :
                               index % 3 == 1 ? "ArchiveRoom" : "Workshop";
