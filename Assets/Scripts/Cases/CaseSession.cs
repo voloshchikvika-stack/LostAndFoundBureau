@@ -122,10 +122,10 @@ namespace LostAndFound.Cases
             // An earlier build ended after two clients. Continue completed
             // saves with the newly-added third case instead of getting stuck
             // on the old "all cases finished" screen.
-            if (allCasesCompleted && currentCaseIndex == 1 &&
-                CaseDatabase.Cases.Count > 2)
+            if (allCasesCompleted &&
+                currentCaseIndex < CaseDatabase.Cases.Count - 1)
             {
-                currentCaseIndex = 2;
+                currentCaseIndex++;
                 completedClues = 0;
                 lastClueIndex = -1;
                 introSeen = false;
