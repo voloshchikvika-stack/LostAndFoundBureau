@@ -566,9 +566,15 @@ namespace LostAndFound.Cases
             int responseIndex = CaseSession.CompletedClues - 1;
             bool hasResponse = currentCase.ClueResponses != null &&
                                responseIndex >= 0 && responseIndex < currentCase.ClueResponses.Length;
-            string text = hasResponse
-                ? currentCase.ClueResponses[responseIndex]
-                : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
+            string text = CaseSession.MiniGameCompleted
+                ? currentCase.RoomId == "PhotoLab"
+                    ? "На кадре из трамвая видна важная деталь! Давайте сравним " +
+                      "улику из поиска и результаты фотолаборатории в папке дела."
+                    : "Новое исследование завершено! Сравним находку из Match-3 " +
+                      "с результатом работы в отделе — обе улики уже в папке."
+                : hasResponse
+                    ? currentCase.ClueResponses[responseIndex]
+                    : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
 
             GUI.Label(R(665, 235, 830, 95, scale), text, bodyStyle);
 
@@ -607,7 +613,7 @@ namespace LostAndFound.Cases
                 currentCase.LostItemName, folderSmall);
 
             GUI.Label(R(810, 818, 300, 25, scale),
-                $"УЛИКИ {CaseSession.CompletedClues}/{currentCase.RequiredClues}", folderSmall);
+                $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}", folderSmall);
 
             if (!interactive)
                 return;
@@ -637,7 +643,7 @@ namespace LostAndFound.Cases
 
             float clueY = 305f;
 
-            if (CaseSession.CompletedClues == 0)
+            if (CaseSession.CollectedEvidenceCount == 0)
             {
                 GUIStyle emptyStyle = LabelStyle(
                     20, FontStyle.Normal, TextAnchor.MiddleCenter, scale,
@@ -649,12 +655,14 @@ namespace LostAndFound.Cases
                     emptyStyle);
             }
 
-            for (int i = 0; i < CaseSession.CompletedClues; i++)
+            for (int i = 0; i < CaseSession.CollectedEvidenceCount; i++)
             {
-                string clue = CaseSession.GetCollectedClue(i);
+                string clue = CaseSession.GetCollectedEvidenceText(i);
+                string source = CaseSession.GetCollectedEvidenceSource(i);
 
                 GUI.DrawTexture(R(345, clueY, 1210, 150, scale), paperTexture, ScaleMode.StretchToFill, true);
-                GUI.Label(R(375, clueY + 12, 1130, 28, scale), $"УЛИКА {i + 1}", clueHeaderStyle);
+                GUI.Label(R(375, clueY + 12, 1130, 28, scale),
+                    $"УЛИКА {i + 1} · {source}", clueHeaderStyle);
                 GUI.Label(R(375, clueY + 44, 1130, 92, scale), clue, clueStyle);
                 clueY += 166f;
             }
@@ -1171,13 +1179,13 @@ namespace LostAndFound.Cases
             else
             {
                 GUI.Label(R(480, 558, 960, 70, scale),
-                    "ЗАДАНИЕ ВЫПОЛНЕНО", heading);
+                    "УЛИКА ДОБАВЛЕНА В ДЕЛО", heading);
                 GUI.Label(R(460, 650, 1000, 138, scale),
                     currentCase.MiniGameResult, body);
             }
 
             if (GUI.Button(R(755, 940, 410, 59, scale),
-                solved ? "ВЕРНУТЬСЯ К ДЕЛУ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
+                solved ? "ПРОЧИТАТЬ УЛИКИ В ДЕЛЕ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
                 mode = BureauMode.CaseFile;
         }
 
