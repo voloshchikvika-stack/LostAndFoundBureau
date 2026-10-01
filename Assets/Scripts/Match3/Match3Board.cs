@@ -39,6 +39,7 @@ namespace LostAndFound.Match3
         private bool bombsEnabled;
         private bool planesEnabled;
         private bool colorClearEnabled;
+        private string selectedInventoryBooster;
         private Sprite planeBonusSprite;
         private Sprite bombBonusSprite;
         private Sprite colorClearBonusSprite;
@@ -123,6 +124,9 @@ namespace LostAndFound.Match3
                 if (BureauDebugPanel.IsPointerOverPanel(screenPosition))
                     return;
 #endif
+                if (IsPointerOverInventory(screenPosition))
+                    return;
+
                 HandlePointer(screenPosition);
             }
         }
@@ -299,6 +303,29 @@ namespace LostAndFound.Match3
             Match3Piece clicked = pieces[column, row];
             if (clicked == null)
                 return;
+
+            if (!string.IsNullOrEmpty(selectedInventoryBooster))
+            {
+                if (clicked.IsBonus)
+                    return;
+
+                string requested = selectedInventoryBooster;
+                if (BureauEconomy.TryUseBooster(requested))
+                {
+                    Match3BonusKind bonus = requested == "Bomb"
+                        ? Match3BonusKind.Bomb
+                        : requested == "Plane"
+                            ? Match3BonusKind.Plane
+                            : Match3BonusKind.ColorClear;
+
+                    DeselectCurrent();
+                    clicked.SetBonus(bonus, GetBonusSprite(bonus),
+                        cellSize * 0.90f);
+                }
+
+                selectedInventoryBooster = null;
+                return;
+            }
 
             if (selectedPiece == null)
             {
@@ -1100,6 +1127,103 @@ namespace LostAndFound.Match3
 
             if (gameEnded)
                 DrawResultOverlay(scale);
+            else
+                DrawInventory(scale);
+        }
+
+        private static float InventoryScale()
+        {
+            return Mathf.Clamp(
+                Mathf.Min(Screen.width / 1920f, Screen.height / 1080f),
+                0.65f, 2.5f);
+        }
+
+        private Rect InventoryRect(float scale)
+        {
+            return new Rect(
+                Screen.width - 266f * scale - 18f * scale,
+                150f * scale, 266f * scale, 368f * scale);
+        }
+
+        private bool IsPointerOverInventory(Vector2 screenPosition)
+        {
+            float scale = InventoryScale();
+            Rect rect = InventoryRect(scale);
+            Vector2 uiPoint = new Vector2(
+                screenPosition.x,
+                Screen.height - screenPosition.y);
+            return rect.Contains(uiPoint);
+        }
+
+        private void DrawInventory(float scale)
+        {
+            Rect bounds = InventoryRect(scale);
+            DrawCard(bounds, hudCardStrongTexture);
+
+            GUIStyle heading = CreateLabelStyle(
+                20, FontStyle.Bold, TextAnchor.MiddleCenter, scale);
+            GUIStyle helper = CreateLabelStyle(
+                14, FontStyle.Normal, TextAnchor.MiddleCenter, scale);
+
+            helper.wordWrap = true;
+            helper.normal.textColor = new Color(0.82f, 0.86f, 0.94f);
+
+            GUI.Label(new Rect(bounds.x, bounds.y + 11f * scale,
+                bounds.width, 29f * scale),
+                "БОНУСЫ", heading);
+
+            GUIStyle button = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = Mathf.RoundToInt(15f * scale),
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                wordWrap = true
+            };
+
+            string[] ids = { "Moves5", "Bomb", "Plane", "ColorClear" };
+            string[] names = { "+5 ХОДОВ", "БОМБА", "САМОЛЁТИК", "ЦВЕТ" };
+
+            for (int i = 0; i < ids.Length; i++)
+            {
+                string boosterId = ids[i];
+                int count = BureauEconomy.BoosterCount(boosterId);
+                GUI.enabled = count > 0 && !inputLocked && !gameEnded;
+
+                string prefix = selectedInventoryBooster == boosterId ? "✓ " : "";
+                string label = prefix + names[i] + $" · {count}";
+
+                if (GUI.Button(new Rect(bounds.x + 12f * scale,
+                    bounds.y + (48f + i * 63f) * scale,
+                    bounds.width - 24f * scale, 55f * scale),
+                    label, button))
+                {
+                    if (boosterId == "Moves5")
+                    {
+                        if (BureauEconomy.TryUseBooster(boosterId))
+                        {
+                            maxMoves += 5;
+                            selectedInventoryBooster = null;
+                        }
+                    }
+                    else
+                    {
+                        selectedInventoryBooster =
+                            selectedInventoryBooster == boosterId
+                                ? null : boosterId;
+                    }
+                }
+
+                GUI.enabled = true;
+            }
+
+            GUI.Label(new Rect(bounds.x + 12f * scale,
+                bounds.y + 306f * scale,
+                bounds.width - 24f * scale,
+                54f * scale),
+                string.IsNullOrEmpty(selectedInventoryBooster)
+                    ? "Купите бонусы в разделе «Развитие»."
+                    : "Нажмите на обычную фишку, чтобы поставить бонус.",
+                helper);
         }
 
         private GUIStyle CreateLabelStyle(int fontSize, FontStyle fontStyle, TextAnchor alignment, float scale)
