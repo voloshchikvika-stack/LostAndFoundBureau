@@ -58,6 +58,9 @@ namespace LostAndFound.Cases
         private Texture2D accentTexture;
         private Texture2D corkTexture;
         private Texture2D paperTexture;
+        private Texture2D tornPaperTexture;
+        private Texture2D selectedTornPaperTexture;
+        private Texture2D emptyReceiptSlotTexture;
         private Font uiFont;
 
         private bool cluePopupVisible;
@@ -167,6 +170,9 @@ namespace LostAndFound.Cases
             accentTexture = MakeTexture(new Color(0.77f, 0.64f, 0.36f, 1f));
             corkTexture = MakeTexture(new Color(0.58f, 0.38f, 0.22f, 1f));
             paperTexture = MakeTexture(new Color(0.92f, 0.88f, 0.76f, 1f));
+            tornPaperTexture = MakeTornPaperTexture(new Color(0.98f, 0.95f, 0.85f));
+            selectedTornPaperTexture = MakeTornPaperTexture(new Color(1f, 0.86f, 0.60f));
+            emptyReceiptSlotTexture = MakeRoundedTexture(new Color(0.79f, 0.69f, 0.53f, 1f), 18);
 
             uiFont = Font.CreateDynamicFontFromOSFont(
                 new[] { "Segoe UI", "Arial" },
@@ -204,6 +210,56 @@ namespace LostAndFound.Cases
 
                     bool inside = dx * dx + dy * dy <= r * r;
                     texture.SetPixel(x, y, inside ? color : new Color(0f, 0f, 0f, 0f));
+                }
+            }
+
+            texture.Apply();
+            return texture;
+        }
+
+        private Texture2D MakeTornPaperTexture(Color paperColor)
+        {
+            const int textureWidth = 240;
+            const int textureHeight = 110;
+            Texture2D texture = new Texture2D(
+                textureWidth, textureHeight, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+
+            Color darkerEdge = new Color(0.66f, 0.49f, 0.32f);
+            Color transparent = new Color(0f, 0f, 0f, 0f);
+
+            for (int y = 0; y < textureHeight; y++)
+            {
+                for (int x = 0; x < textureWidth; x++)
+                {
+                    int left = 6 + Mathf.RoundToInt(2.4f * Mathf.Sin(y * 0.30f));
+                    int right = textureWidth - 7 +
+                        Mathf.RoundToInt(2.2f * Mathf.Sin(y * 0.25f + 1.2f));
+                    int bottom = 5 + Mathf.RoundToInt(2.3f * Mathf.Sin(x * 0.34f));
+                    int top = textureHeight - 6 +
+                        Mathf.RoundToInt(2.1f * Mathf.Sin(x * 0.28f + 0.9f));
+
+                    bool inside = x >= left && x <= right &&
+                                  y >= bottom && y <= top;
+
+                    if (!inside)
+                    {
+                        texture.SetPixel(x, y, transparent);
+                        continue;
+                    }
+
+                    bool atEdge = x - left < 3 || right - x < 3 ||
+                                  y - bottom < 3 || top - y < 3;
+
+                    float grain = Mathf.PerlinNoise(x * 0.15f, y * 0.16f);
+                    Color ink = atEdge
+                        ? Color.Lerp(paperColor, darkerEdge, 0.35f)
+                        : Color.Lerp(paperColor,
+                            new Color(0.92f, 0.83f, 0.70f),
+                            grain * 0.075f);
+
+                    texture.SetPixel(x, y, ink);
                 }
             }
 
@@ -1212,50 +1268,108 @@ namespace LostAndFound.Cases
 
         private void DrawRestorationPuzzle(float scale, GUIStyle button, GUIStyle body)
         {
-            Color ink = new Color(0.38f, 0.25f, 0.17f);
-            GUIStyle hint = LabelStyle(16, FontStyle.Bold,
-                TextAnchor.MiddleCenter, scale, ink);
+            Color darkInk = new Color(0.32f, 0.20f, 0.13f);
+            Color mutedInk = new Color(0.49f, 0.37f, 0.27f);
+            GUIStyle heading = LabelStyle(
+                17, FontStyle.Bold, TextAnchor.MiddleLeft, scale, darkInk);
+            GUIStyle scrapText = LabelStyle(
+                21, FontStyle.Bold, TextAnchor.MiddleCenter, scale, darkInk);
+            GUIStyle emptyText = LabelStyle(
+                17, FontStyle.Normal, TextAnchor.MiddleCenter, scale, mutedInk);
+            GUIStyle help = LabelStyle(
+                17, FontStyle.Normal, TextAnchor.MiddleCenter, scale, darkInk);
+            GUIStyle action = ButtonStyle(15, scale);
+            const float startX = 410f;
+            const float gap = 368f;
+            const float width = 340f;
 
-            GUI.Label(R(490, 516, 940, 33, scale),
-                "1. Выберите фрагмент в верхнем ряду. " +
-                "2. Поместите его в нужное место в нижнем ряду.", hint);
+            GUI.Label(R(445, 511, 1030, 30, scale),
+                "ШАГ 1 · ВЫБЕРИ ОБРЫВОК", heading);
 
             for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
             {
-                string label = (selectedFragment == i ? "● " : "") +
-                    currentCase.MiniGameCards[i];
+                bool isPlaced = false;
 
-                if (GUI.Button(R(412 + i * 371, 566, 346, 88, scale), label, button))
-                    selectedFragment = i;
+                for (int j = 0; j < assemblySlots.Length; j++)
+                {
+                    if (assemblySlots[j] == i)
+                        isPlaced = true;
+                }
+
+                Rect scrap = R(startX + i * gap, 552, width, 100, scale);
+
+                Texture2D texture = selectedFragment == i
+                    ? selectedTornPaperTexture
+                    : tornPaperTexture;
+
+                GUI.DrawTexture(scrap, texture, ScaleMode.StretchToFill, true);
+                GUI.Label(scrap,
+                    isPlaced && selectedFragment != i ? "✓ НА РАСПИСКЕ" :
+                        currentCase.MiniGameCards[i],
+                    isPlaced && selectedFragment != i ? emptyText : scrapText);
+
+                if (GUI.Button(scrap, GUIContent.none, GUIStyle.none))
+                {
+                    // Picking up a placed fragment also removes it from its
+                    // old location, so the player can easily rearrange it.
+                    for (int slot = 0; slot < assemblySlots.Length; slot++)
+                    {
+                        if (assemblySlots[slot] == i)
+                            assemblySlots[slot] = -1;
+                    }
+
+                    selectedFragment = selectedFragment == i ? -1 : i;
+                    miniGameFeedback = selectedFragment >= 0
+                        ? "Теперь нажми на место для этого обрывка внизу."
+                        : "Выбери любой обрывок бумаги.";
+                }
             }
+
+            GUI.Label(R(445, 662, 1030, 30, scale),
+                "ШАГ 2 · СОБЕРИ АДРЕС СЛЕВА НАПРАВО", heading);
 
             for (int slot = 0; slot < assemblySlots.Length; slot++)
             {
-                int item = assemblySlots[slot];
-                string label = item < 0
-                    ? $"МЕСТО {slot + 1} · ПУСТО"
-                    : $"{slot + 1}. {currentCase.MiniGameCards[item]}";
+                int pieceIndex = assemblySlots[slot];
+                Rect target = R(startX + slot * gap, 708, width, 108, scale);
 
-                if (GUI.Button(R(412 + slot * 371, 680, 346, 92, scale), label, button))
+                if (pieceIndex < 0)
+                {
+                    DrawNineSlice(target, emptyReceiptSlotTexture, 18);
+                    GUI.Label(target, $"ЧАСТЬ {slot + 1} · НАЗНАЧЬ ОБРЫВОК",
+                        emptyText);
+                }
+                else
+                {
+                    GUI.DrawTexture(target, tornPaperTexture,
+                        ScaleMode.StretchToFill, true);
+                    GUI.Label(target, currentCase.MiniGameCards[pieceIndex],
+                        scrapText);
+                }
+
+                if (GUI.Button(target, GUIContent.none, GUIStyle.none))
                 {
                     if (selectedFragment >= 0)
                     {
-                        for (int n = 0; n < assemblySlots.Length; n++)
+                        int toPlace = selectedFragment;
+
+                        for (int j = 0; j < assemblySlots.Length; j++)
                         {
-                            if (assemblySlots[n] == selectedFragment)
-                                assemblySlots[n] = -1;
+                            if (assemblySlots[j] == toPlace)
+                                assemblySlots[j] = -1;
                         }
 
-                        assemblySlots[slot] = selectedFragment;
+                        assemblySlots[slot] = toPlace;
                         selectedFragment = -1;
 
                         bool complete = true;
                         bool correct = true;
 
-                        for (int n = 0; n < assemblySlots.Length; n++)
+                        for (int j = 0; j < assemblySlots.Length; j++)
                         {
-                            complete &= assemblySlots[n] >= 0;
-                            correct &= assemblySlots[n] == currentCase.MiniGameCorrectOrder[n];
+                            complete &= assemblySlots[j] >= 0;
+                            correct &= assemblySlots[j] ==
+                                currentCase.MiniGameCorrectOrder[j];
                         }
 
                         if (complete && correct)
@@ -1264,21 +1378,49 @@ namespace LostAndFound.Cases
                             miniGameFeedback = currentCase.MiniGameResult;
                         }
                         else if (complete)
-                            miniGameFeedback = "Фрагменты пока не сложились в адрес. " +
-                                "Выберите фрагмент и поменяйте его место.";
+                        {
+                            miniGameFeedback =
+                                "Порядок неверный. Выбери обрывок сверху " +
+                                "и поставь его на другое место.";
+                        }
                         else
-                            miniGameFeedback = "Продолжайте восстанавливать расписку.";
+                        {
+                            miniGameFeedback = "Отлично! Осталось собрать " +
+                                "остальные части расписки.";
+                        }
                     }
-                    else if (item >= 0)
+                    else if (pieceIndex >= 0)
                     {
-                        // Take a fragment back out to change the arrangement.
-                        selectedFragment = item;
+                        // Clicking an already placed fragment picks it up.
+                        selectedFragment = pieceIndex;
                         assemblySlots[slot] = -1;
+                        miniGameFeedback =
+                            "Выбрано! Нажми на новое место для обрывка.";
+                    }
+                    else
+                    {
+                        miniGameFeedback =
+                            "Сначала нажми на любой обрывок в верхнем ряду.";
                     }
                 }
             }
 
-            GUI.Label(R(510, 823, 900, 94, scale), miniGameFeedback, body);
+            if (GUI.Button(R(445, 844, 270, 54, scale),
+                "НАЧАТЬ СНАЧАЛА", action))
+            {
+                selectedFragment = -1;
+
+                for (int i = 0; i < assemblySlots.Length; i++)
+                    assemblySlots[i] = -1;
+
+                miniGameFeedback = "Все обрывки возвращены на стол.";
+            }
+
+            string status = string.IsNullOrEmpty(miniGameFeedback)
+                ? "Нажми на обрывок сверху, потом на место снизу."
+                : miniGameFeedback;
+
+            GUI.Label(R(735, 843, 740, 62, scale), status, help);
         }
 
         private void DrawFinished(float scale)
