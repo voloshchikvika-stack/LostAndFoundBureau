@@ -257,8 +257,6 @@ namespace LostAndFound.Cases
         // Later slots are deterministic content prototypes, not 196 separately
         // written stories. They can be replaced by hand-authored CaseDefinitions
         // without changing saves, scene transitions or puzzle progression.
-        private static readonly CaseDefinition[] cases = BuildCases();
-
         private sealed class StoryPattern
         {
             public readonly string ObjectName;
@@ -329,6 +327,10 @@ namespace LostAndFound.Cases
                 "В коробке лежит обрывок квитанции ремонтной мастерской.",
                 "Склеенные фрагменты квитанции указывают на ремонтную мастерскую.")
         };
+
+        // Initialize after the template arrays: static field initializers
+        // execute in declaration order in C#.
+        private static readonly CaseDefinition[] cases = BuildCases();
 
         private static CaseDefinition[] BuildCases()
         {
