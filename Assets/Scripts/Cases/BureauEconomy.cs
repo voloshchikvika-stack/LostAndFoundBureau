@@ -24,10 +24,9 @@ namespace LostAndFound.Cases
         private const string Prefix = "LostAndFound.v2.";
         private static readonly BureauUpgrade[] upgrades =
         {
-            new BureauUpgrade("Magnifier", "Винтажная лупа", "Украшение рабочего стола.", 80),
-            new BureauUpgrade("Plant", "Комнатное растение", "Немного уюта для бюро.", 120),
-            new BureauUpgrade("Lamp", "Настольная лампа", "Тёплый свет для расследований.", 180),
-            new BureauUpgrade("Archive", "Архивная коробка", "Место для памятных дел.", 240)
+            new BureauUpgrade("PhotoLab", "Фотолаборатория", "Исследовать снимки и восстановить последовательность кадров.", 80),
+            new BureauUpgrade("ArchiveRoom", "Архив документов", "Сопоставлять записи и находить пропавшие документы.", 90),
+            new BureauUpgrade("Workshop", "Мастерская находок", "Восстанавливать повреждённые предметы и записи.", 100)
         };
 
         public static IReadOnlyList<BureauUpgrade> Upgrades => upgrades;
@@ -51,7 +50,7 @@ namespace LostAndFound.Cases
             if (CaseResult(caseId) != 0)
                 return 0;
 
-            int reward = correct ? 150 : 30;
+            int reward = correct ? 150 : 100;
             PlayerPrefs.SetInt(Prefix + "Result." + caseId, correct ? 1 : -1);
             PlayerPrefs.SetInt(Prefix + "Coins", Coins + reward);
             PlayerPrefs.Save();
@@ -63,6 +62,10 @@ namespace LostAndFound.Cases
             PlayerPrefs.DeleteKey(Prefix + "Coins");
             foreach (BureauUpgrade upgrade in upgrades)
                 PlayerPrefs.DeleteKey(Prefix + "Upgrade." + upgrade.Id);
+
+            // Remove purchases from the old decoration-only prototype as well.
+            foreach (string obsolete in new[] { "Magnifier", "Plant", "Lamp", "Archive" })
+                PlayerPrefs.DeleteKey(Prefix + "Upgrade." + obsolete);
 
             foreach (CaseDefinition currentCase in CaseDatabase.Cases)
                 PlayerPrefs.DeleteKey(Prefix + "Result." + currentCase.Id);
