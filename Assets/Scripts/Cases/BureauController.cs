@@ -963,61 +963,150 @@ namespace LostAndFound.Cases
 
         private void DrawShop(float scale)
         {
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height),
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
                 overlayTexture, ScaleMode.StretchToFill);
-            DrawNineSlice(R(270, 100, 1380, 860, scale), folderPaperTexture, 20);
+            DrawNineSlice(R(270, 96, 1380, 890, scale), folderPaperTexture, 20);
 
             Color ink = new Color(0.27f, 0.17f, 0.11f);
-            GUIStyle title = LabelStyle(34, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle body = LabelStyle(18, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle name = LabelStyle(23, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle title = LabelStyle(30, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle body = LabelStyle(17, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle name = LabelStyle(22, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
             GUIStyle button = ButtonStyle(17, scale);
 
-            GUI.Label(R(335, 138, 750, 52, scale), "РАЗВИТИЕ БЮРО", title);
-            GUI.Label(R(1170, 140, 350, 50, scale), $"Монеты: {BureauEconomy.Coins}", name);
-            GUI.Label(R(335, 204, 1120, 40, scale),
-                "Открывайте отделы, чтобы исследовать снимки, документы и предметы.", body);
+            GUI.Label(R(330, 122, 780, 53, scale), "РАЗВИТИЕ БЮРО", title);
+            GUI.Label(R(1170, 128, 365, 45, scale),
+                $"Монеты: {BureauEconomy.Coins}", name);
 
-            int i = 0;
-            foreach (BureauUpgrade upgrade in BureauEconomy.Upgrades)
+            string[] tabs = { "КОМНАТЫ", "ОБОРУДОВАНИЕ", "БОНУСЫ" };
+            for (int tab = 0; tab < tabs.Length; tab++)
             {
-                float y = 270f + i * 190f;
-                DrawNineSlice(R(325, y, 1260, 177, scale), speechBubbleTexture, 20);
-                Texture2D icon = Resources.Load<Texture2D>(
-                    "Bureau/Rooms/" + upgrade.Id + "/Icon");
-
-                if (icon != null)
-                    GUI.DrawTexture(R(345, y + 13, 158, 149, scale),
-                        icon, ScaleMode.ScaleToFit, true);
-                else
-                    DrawNineSlice(R(350, y + 20, 142, 130, scale), folderTexture, 18);
-
-                GUI.Label(R(530, y + 20, 665, 43, scale), upgrade.Name, name);
-                GUI.Label(R(530, y + 74, 645, 83, scale), upgrade.Description, body);
-
-                bool owned = BureauEconomy.Owns(upgrade.Id);
-                GUI.enabled = owned || BureauEconomy.Coins >= upgrade.Price;
-                string caption = owned ? "ПОСЕТИТЬ" :
-                    $"ОТКРЫТЬ · {upgrade.Price} МОНЕТ";
-
-                if (GUI.Button(R(1220, y + 53, 315, 67, scale), caption, button))
+                GUI.enabled = shopTab != tab;
+                if (GUI.Button(R(340 + 405 * tab, 191, 390, 61, scale), tabs[tab], button))
                 {
-                    if (owned || BureauEconomy.TryBuy(upgrade))
-                    {
-                        activeRoomId = upgrade.Id;
-                        roomReturnMode = BureauMode.Shop;
-                        temporaryRoomAccess = false;
-                        mode = BureauMode.Room;
-                        GUI.enabled = true;
-                        return;
-                    }
+                    shopTab = tab;
+                    equipmentPage = 0;
                 }
-
                 GUI.enabled = true;
-                i++;
             }
 
-            if (GUI.Button(R(760, 861, 400, 68, scale), "ВЕРНУТЬСЯ", button))
+            if (shopTab == 0)
+            {
+                GUI.Label(R(340, 273, 1210, 40, scale),
+                    "Открывайте комнаты навсегда. Проходить обязательные задания " +
+                    "по-прежнему можно бесплатно.", body);
+
+                int i = 0;
+                foreach (BureauUpgrade room in BureauEconomy.Upgrades)
+                {
+                    float y = 321 + i * 163;
+                    DrawNineSlice(R(330, y, 1260, 151, scale), speechBubbleTexture, 22);
+                    Texture2D icon = Resources.Load<Texture2D>(
+                        "Bureau/Rooms/" + room.Id + "/Icon");
+
+                    if (icon != null)
+                        GUI.DrawTexture(R(350, y + 15, 133, 122, scale),
+                            icon, ScaleMode.ScaleToFit, true);
+
+                    GUI.Label(R(505, y + 17, 675, 45, scale), room.Name, name);
+                    GUI.Label(R(505, y + 66, 668, 64, scale),
+                        room.Description, body);
+
+                    bool owned = BureauEconomy.Owns(room.Id);
+                    GUI.enabled = owned || BureauEconomy.Coins >= room.Price;
+
+                    if (GUI.Button(R(1210, y + 40, 338, 65, scale),
+                        owned ? "ПОСЕТИТЬ" :
+                            $"ОТКРЫТЬ · {room.Price}", button))
+                    {
+                        if (owned || BureauEconomy.TryBuy(room))
+                        {
+                            activeRoomId = room.Id;
+                            roomReturnMode = BureauMode.Shop;
+                            temporaryRoomAccess = false;
+                            mode = BureauMode.Room;
+                            GUI.enabled = true;
+                            return;
+                        }
+                    }
+
+                    GUI.enabled = true;
+                    i++;
+                }
+            }
+            else if (shopTab == 1)
+            {
+                GUI.Label(R(340, 274, 1200, 42, scale),
+                    "Оборудование остаётся навсегда и открывает подсказку " +
+                    "в головоломках комнаты.", body);
+
+                int indexStart = equipmentPage * 3;
+                for (int i = 0; i < 3; i++)
+                {
+                    int index = indexStart + i;
+                    if (index >= BureauEconomy.Equipment.Count)
+                        break;
+
+                    BureauUpgrade item = BureauEconomy.Equipment[index];
+                    float y = 322 + i * 158;
+                    DrawNineSlice(R(330, y, 1260, 146, scale),
+                        speechBubbleTexture, 20);
+                    GUI.Label(R(366, y + 19, 790, 42, scale), item.Name, name);
+                    GUI.Label(R(366, y + 66, 800, 65, scale),
+                        item.Description, body);
+
+                    bool owned = BureauEconomy.OwnsEquipment(item.Id);
+                    GUI.enabled = !owned && BureauEconomy.Coins >= item.Price;
+
+                    if (GUI.Button(R(1210, y + 34, 338, 65, scale),
+                        owned ? "КУПЛЕНО" :
+                            $"КУПИТЬ · {item.Price}", button))
+                        BureauEconomy.TryBuyEquipment(item);
+
+                    GUI.enabled = true;
+                }
+
+                if (GUI.Button(R(513, 812, 300, 57, scale),
+                    "← ПРЕДЫДУЩИЕ", button))
+                    equipmentPage = (equipmentPage + 2) % 3;
+
+                GUI.Label(R(870, 823, 180, 37, scale),
+                    $"{equipmentPage + 1} / 3", name);
+
+                if (GUI.Button(R(1080, 812, 300, 57, scale),
+                    "СЛЕДУЮЩИЕ →", button))
+                    equipmentPage = (equipmentPage + 1) % 3;
+            }
+            else
+            {
+                GUI.Label(R(340, 276, 1220, 40, scale),
+                    "Расходуемые бонусы для Match-3. " +
+                    "Каждый предмет используется один раз.", body);
+
+                int i = 0;
+                foreach (BureauBooster booster in BureauEconomy.Boosters)
+                {
+                    float y = 319 + i * 127;
+                    DrawNineSlice(R(330, y, 1260, 115, scale),
+                        speechBubbleTexture, 20);
+                    GUI.Label(R(366, y + 11, 800, 42, scale),
+                        booster.Name, name);
+                    GUI.Label(R(366, y + 54, 815, 49, scale),
+                        booster.Description + " · У вас: " +
+                        BureauEconomy.BoosterCount(booster.Id), body);
+
+                    GUI.enabled = BureauEconomy.Coins >= booster.Price;
+
+                    if (GUI.Button(R(1210, y + 25, 338, 65, scale),
+                        $"КУПИТЬ · {booster.Price}", button))
+                        BureauEconomy.TryBuyBooster(booster);
+
+                    GUI.enabled = true;
+                    i++;
+                }
+            }
+
+            if (GUI.Button(R(762, 901, 395, 64, scale),
+                "ВЕРНУТЬСЯ", button))
                 CloseOverlay();
         }
 
