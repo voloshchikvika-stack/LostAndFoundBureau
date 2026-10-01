@@ -1455,11 +1455,11 @@ namespace LostAndFound.Cases
 
             bool solved = CaseSession.MiniGameCompleted;
 
-            if (!solved && currentCase.MiniGameMode == "Spot")
+            if (!solved && IsChoicePuzzle(currentCase.MiniGameMode))
             {
                 DrawPhotoPuzzle(scale, button, body);
             }
-            else if (!solved && currentCase.MiniGameMode == "Assembly")
+            else if (!solved && IsRestorationPuzzle(currentCase.MiniGameMode))
             {
                 DrawRestorationPuzzle(scale, button, body);
             }
@@ -1514,6 +1514,18 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(755, 940, 410, 59, scale),
                 solved ? "ПРОЧИТАТЬ УЛИКИ В ДЕЛЕ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
                 mode = BureauMode.CaseFile;
+        }
+
+        private static bool IsChoicePuzzle(string mode)
+        {
+            return mode == "Spot" || mode == "Compare" || mode == "Focus" ||
+                   mode == "Catalog" || mode == "CrossCheck" ||
+                   mode == "Repair" || mode == "Pair";
+        }
+
+        private static bool IsRestorationPuzzle(string mode)
+        {
+            return mode == "Assembly" || mode == "Restore";
         }
 
         private void DrawPhotoPuzzle(float scale, GUIStyle button, GUIStyle body)
