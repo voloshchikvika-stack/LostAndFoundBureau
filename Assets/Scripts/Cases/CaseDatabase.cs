@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace LostAndFound.Cases
 {
     public static class CaseDatabase
     {
-        private static readonly CaseDefinition[] cases =
+        // Keep the four fully scripted introductory stories unchanged.
+        private static readonly CaseDefinition[] authoredCases =
         {
             new CaseDefinition(
                 id: "Case01",
@@ -249,6 +251,206 @@ namespace LostAndFound.Cases
                 miniGameMode: "Assembly"
             )
         };
+
+        public const int TotalLevels = 200;
+
+        // Later slots are deterministic content prototypes, not 196 separately
+        // written stories. They can be replaced by hand-authored CaseDefinitions
+        // without changing saves, scene transitions or puzzle progression.
+        private static readonly CaseDefinition[] cases = BuildCases();
+
+        private sealed class StoryPattern
+        {
+            public readonly string ObjectName;
+            public readonly string Place;
+            public readonly string OtherA;
+            public readonly string OtherB;
+            public readonly string OtherC;
+            public readonly string Hint;
+            public readonly string RoomHint;
+
+            public StoryPattern(string objectName, string place,
+                string otherA, string otherB, string otherC,
+                string hint, string roomHint)
+            {
+                ObjectName = objectName;
+                Place = place;
+                OtherA = otherA;
+                OtherB = otherB;
+                OtherC = otherC;
+                Hint = hint;
+                RoomHint = roomHint;
+            }
+        }
+
+        private static readonly string[] Names =
+        {
+            "Лиза", "Денис", "Алина", "Егор", "София", "Илья",
+            "Дарья", "Артём", "Катя", "Михаил", "Юля", "Полина",
+            "Кирилл", "Олеся", "Вадим", "Наташа", "Павел", "Женя"
+        };
+
+        private static readonly StoryPattern[] Patterns =
+        {
+            new StoryPattern("письмо бабушки", "книжный магазин", "сквер", "кофейня", "почта",
+                "На конверте заметили книжную пыль и синюю наклейку с номером полки.",
+                "В учётных записях обнаружилась та же наклейка книжного магазина."),
+            new StoryPattern("ключ от мастерской", "автобус №4", "банк", "рынок", "пекарня",
+                "К ключам прикреплена красная лента, замеченная у сиденья автобуса №4.",
+                "В материалах проверки маршрут и время связаны с автобусом №4."),
+            new StoryPattern("сшитый вручную шарф", "пекарня", "трамвай", "музей", "остановка",
+                "К волокнам шарфа прилипли крошки и этикетка пекарни.",
+                "Запись из пекарни подтверждает, что шарф остался на спинке стула."),
+            new StoryPattern("блокнот с рисунками", "городская библиотека", "почта", "сквер", "ателье",
+                "Внутри обнаружен библиотечный талон с сегодняшней датой.",
+                "В журнале выдачи найден номер стола, за которым забыли блокнот."),
+            new StoryPattern("карманные часы", "часовая мастерская", "вокзал", "рынок", "парк",
+                "На цепочке осталась квитанция со штампом часовой мастерской.",
+                "Снимок витрины позволяет уточнить, где остались часы."),
+            new StoryPattern("подарочную открытку", "цветочный магазин", "кофейня", "студия", "парк",
+                "На бумаге сохранились лепесток и ценник цветочного магазина.",
+                "Журнал заказов указывает на цветочный магазин."),
+            new StoryPattern("альбом с фотографиями", "фотоателье", "библиотека", "школа", "переход",
+                "К обложке прилипла бумажная метка фотоателье.",
+                "На обработанном изображении виден альбом возле приёмной стойки фотоателье."),
+            new StoryPattern("браслет", "сквер у фонтана", "магазин", "трамвай", "театр",
+                "Между звеньями нашли крупицу голубой краски с ограды фонтана.",
+                "Сопоставление материалов указывает на сквер у фонтана."),
+            new StoryPattern("записку с адресом", "ателье", "кафе", "автобус", "кинотеатр",
+                "На клочке бумаги осталась нитка с характерной этикеткой ателье.",
+                "Из восстановленной записи удалось прочитать адрес ателье."),
+            new StoryPattern("коробочку с кулоном", "музейный гардероб", "парк", "аптека", "ярмарка",
+                "На упаковке сохранился жетон музейного гардероба.",
+                "Журнал находок подтверждает номер ячейки музейного гардероба."),
+            new StoryPattern("стопку старых фотографий", "трамвай №8", "кофейня", "галерея", "вокзал",
+                "На одной фотографии виден зелёный поручень трамвая №8.",
+                "Обработка кадра позволяет установить номер вагона трамвая №8."),
+            new StoryPattern("заводную игрушку", "ремонтную мастерскую", "почта", "библиотека", "театр",
+                "В коробке лежит обрывок квитанции ремонтной мастерской.",
+                "Склеенные фрагменты квитанции указывают на ремонтную мастерскую.")
+        };
+
+        private static CaseDefinition[] BuildCases()
+        {
+            List<CaseDefinition> generated = new List<CaseDefinition>(TotalLevels);
+            generated.AddRange(authoredCases);
+
+            for (int index = authoredCases.Length; index < TotalLevels; index++)
+            {
+                int levelNumber = index + 1;
+                StoryPattern pattern = Patterns[(index - authoredCases.Length) % Patterns.Length];
+                string client = Names[(index * 7 + 3) % Names.Length];
+                string caseTag = levelNumber.ToString("000");
+                string tracking = "Н-" + (2000 + index * 37).ToString();
+                string room = index % 3 == 0 ? "PhotoLab" :
+                              index % 3 == 1 ? "ArchiveRoom" : "Workshop";
+                int challenge = (index / 3) % 4;
+                string mode = room == "PhotoLab"
+                    ? new[] { "Spot", "Compare", "Focus", "Sequence" }[challenge]
+                    : room == "ArchiveRoom"
+                        ? new[] { "Sequence", "Catalog", "CrossCheck", "Code" }[challenge]
+                        : new[] { "Assembly", "Repair", "Pair", "Restore" }[challenge];
+
+                bool selectOne = mode == "Spot" || mode == "Compare" ||
+                                 mode == "Focus" || mode == "Catalog" ||
+                                 mode == "CrossCheck" || mode == "Repair" ||
+                                 mode == "Pair";
+                string taskTitle = room == "PhotoLab"
+                    ? new[] { "Изучить кадры", "Сравнить снимки",
+                              "Найти деталь при увеличении", "Разложить кадры" }[challenge]
+                    : room == "ArchiveRoom"
+                        ? new[] { "Сверить хронологию", "Найти запись в каталоге",
+                                  "Сопоставить два документа", "Восстановить код записи" }[challenge]
+                        : new[] { "Собрать документ", "Выбрать подходящий фрагмент",
+                                  "Найти совпадающие детали", "Восстановить записку" }[challenge];
+
+                string[] puzzleOptions = selectOne
+                    ? new[]
+                    {
+                        "Запись А · след ведёт к месту «" + pattern.OtherA + "».",
+                        "Запись Б · " + pattern.RoomHint,
+                        "Запись В · свидетель упомянул «" + pattern.OtherB + "»."
+                    }
+                    : new[]
+                    {
+                        "Часть III · Подтверждение: " + pattern.Place + ".",
+                        "Часть I · Обращение №" + tracking + ".",
+                        "Часть II · " + pattern.RoomHint
+                    };
+
+                int correctIndex = (index * 3 + 1) % 4;
+                string[] answerOptions =
+                {
+                    pattern.OtherA, pattern.OtherB, pattern.OtherC, pattern.Place
+                };
+                string temp = answerOptions[3];
+                answerOptions[3] = answerOptions[correctIndex];
+                answerOptions[correctIndex] = temp;
+
+                generated.Add(new CaseDefinition(
+                    id: "Case" + caseTag,
+                    clientName: client,
+                    lostItemName: pattern.ObjectName,
+                    story:
+                        "У меня пропали " + pattern.ObjectName +
+                        ". После нескольких остановок я заметил(а) пропажу. " +
+                        "Я успел(а) заглянуть в разные места, поэтому очень хочу восстановить маршрут. " +
+                        "Номер обращения: " + tracking + ".",
+                    clues: new[]
+                    {
+                        "Улика из поиска №" + tracking + ": " + pattern.Hint +
+                        " Для подтверждения нужно исследование в соответствующем отделе."
+                    },
+                    levels: new[]
+                    {
+                        new Match3LevelDefinition(
+                            moves: 20 + index % 7,
+                            targetType: index % 6,
+                            targetCount: 12 + index % 8,
+                            bombsEnabled: true,
+                            planesEnabled: true,
+                            colorClearEnabled: true)
+                    },
+                    answerOptions: answerOptions,
+                    correctAnswerIndex: correctIndex,
+                    correctResponse:
+                        "Спасибо! " + pattern.ObjectName +
+                        " нашлись в нужном месте. Теперь я смогу их забрать!",
+                    wrongResponse:
+                        "К сожалению, там их не оказалось. Давайте сверим собранные материалы.",
+                    correctAnswerExplanation:
+                        "Правильный ответ: " + pattern.Place +
+                        ". " + pattern.Hint + " " + pattern.RoomHint,
+                    inquiryQuestion: "Что вы помните о последнем месте?",
+                    inquiryAnswer: "Я сохранил(а) маршрут и номер обращения " +
+                        tracking + ". Возможно, в документах найдётся ещё одна деталь.",
+                    clueResponses: new[]
+                    {
+                        "Это полезная находка. Давайте проверим её в отделе расследований."
+                    },
+                    miniGameAfterClue: 1,
+                    miniGameTitle: taskTitle + " · дело №" + caseTag,
+                    miniGameInstruction: selectOne
+                        ? "Выберите материал, который подтверждает место пропажи."
+                        : "Расположите три фрагмента в логической последовательности.",
+                    miniGameCards: puzzleOptions,
+                    miniGameCorrectOrder: selectOne
+                        ? new[] { 1 }
+                        : new[] { 1, 2, 0 },
+                    miniGameResult: room == "PhotoLab"
+                        ? "Фотолаборатория. " + pattern.RoomHint
+                        : room == "ArchiveRoom"
+                            ? "Архив документов. " + pattern.RoomHint
+                            : "Мастерская находок. " + pattern.RoomHint,
+                    shortIntro: "У меня пропали " + pattern.ObjectName +
+                        ". Я очень хочу их вернуть. Поможете разобраться?",
+                    roomId: room,
+                    miniGameMode: mode
+                ));
+            }
+
+            return generated.ToArray();
+        }
 
         public static IReadOnlyList<CaseDefinition> Cases => cases;
 
