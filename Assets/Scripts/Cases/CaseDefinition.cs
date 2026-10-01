@@ -55,9 +55,15 @@ namespace LostAndFound.Cases
         public string RoomId { get; }
         public string MiniGameMode { get; }
 
+        // Photo analysis requires one valid answer index; reconstruction and
+        // chronology puzzles require a full permutation of their fragments.
         public bool HasMiniGame => MiniGameAfterClue > 0 && MiniGameCards != null &&
                                    MiniGameCards.Length > 0 && MiniGameCorrectOrder != null &&
-                                   MiniGameCorrectOrder.Length == MiniGameCards.Length;
+                                   (MiniGameMode == "Spot"
+                                       ? MiniGameCorrectOrder.Length == 1 &&
+                                         MiniGameCorrectOrder[0] >= 0 &&
+                                         MiniGameCorrectOrder[0] < MiniGameCards.Length
+                                       : MiniGameCorrectOrder.Length == MiniGameCards.Length);
 
         public int RequiredClues => Clues == null ? 0 : Clues.Length;
 
