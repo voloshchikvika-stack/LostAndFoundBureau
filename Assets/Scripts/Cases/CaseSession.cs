@@ -16,7 +16,13 @@ namespace LostAndFound.Cases
         private static bool allCasesCompleted;
 
         public static int CurrentCaseIndex => currentCaseIndex;
+        // Match-3 clues and a completed room investigation are separate,
+        // permanent pieces of evidence in the current case file.
         public static int CompletedClues => completedClues;
+        public static int CollectedEvidenceCount =>
+            completedClues + (CurrentCase != null && CurrentCase.HasMiniGame && miniGameCompleted ? 1 : 0);
+        public static int RequiredEvidenceCount =>
+            CurrentCase == null ? 0 : CurrentCase.RequiredClues + (CurrentCase.HasMiniGame ? 1 : 0);
         public static bool IntroSeen => introSeen;
         public static bool InquirySeen => inquirySeen;
         public static bool MiniGameCompleted => miniGameCompleted;
@@ -59,7 +65,40 @@ namespace LostAndFound.Cases
             get
             {
                 CaseDefinition currentCase = CurrentCase;
-                return currentCase != null && completedClues >= currentCase.RequiredClues;
+                return currentCase != null && completedClues >= currentCase.RequiredClues &&
+                       (!currentCase.HasMiniGame || miniGameCompleted);
+            }
+        }
+
+        public static string GetCollectedEvidenceText(int index)
+        {
+            CaseDefinition currentCase = CurrentCase;
+            if (currentCase == null || index < 0 || index >= CollectedEvidenceCount)
+                return null;
+
+            if (index < completedClues)
+                return GetCollectedClue(index);
+
+            return currentCase.HasMiniGame && miniGameCompleted
+                ? currentCase.MiniGameResult
+                : null;
+        }
+
+        public static string GetCollectedEvidenceSource(int index)
+        {
+            CaseDefinition currentCase = CurrentCase;
+            if (currentCase == null || index < 0 || index >= CollectedEvidenceCount)
+                return null;
+
+            if (index < completedClues)
+                return "MATCH-3";
+
+            switch (currentCase.RoomId)
+            {
+                case "PhotoLab": return "ФОТОЛАБОРАТОРИЯ";
+                case "ArchiveRoom": return "АРХИВ ДОКУМЕНТОВ";
+                case "Workshop": return "МАСТЕРСКАЯ НАХОДОК";
+                default: return "ИССЛЕДОВАНИЕ";
             }
         }
 
