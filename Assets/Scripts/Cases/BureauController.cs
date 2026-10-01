@@ -1472,7 +1472,11 @@ namespace LostAndFound.Cases
                     miniGameFeedback = BuildEquipmentHint(availableEquipment);
             }
 
-            if (!solved && IsChoicePuzzle(currentCase.MiniGameMode))
+            if (!solved && IsPairPuzzle(currentCase.MiniGameMode))
+            {
+                DrawMatchingEvidencePuzzle(scale, button, body);
+            }
+            else if (!solved && IsChoicePuzzle(currentCase.MiniGameMode))
             {
                 DrawPhotoPuzzle(scale, button, body);
             }
@@ -1542,6 +1546,17 @@ namespace LostAndFound.Cases
             int[] order = currentCase.MiniGameCorrectOrder;
             string[] cards = currentCase.MiniGameCards;
 
+            if (IsPairPuzzle(currentCase.MiniGameMode))
+            {
+                if (tier == 1)
+                    return "Первое совпадение — материал " + (order[0] + 1) + ".";
+                if (tier == 2)
+                    return "Сопоставьте материалы " + (order[0] + 1) +
+                        " и " + (order[1] + 1) + ".";
+
+                return "Проверка завершена: " + currentCase.MiniGameResult;
+            }
+
             if (IsChoicePuzzle(currentCase.MiniGameMode))
             {
                 int index = Mathf.Clamp(order[0], 0, cards.Length - 1);
@@ -1576,8 +1591,12 @@ namespace LostAndFound.Cases
         private static bool IsChoicePuzzle(string mode)
         {
             return mode == "Spot" || mode == "Compare" || mode == "Focus" ||
-                   mode == "Catalog" || mode == "CrossCheck" ||
-                   mode == "Repair" || mode == "Pair";
+                   mode == "Catalog" || mode == "Repair";
+        }
+
+        private static bool IsPairPuzzle(string mode)
+        {
+            return mode == "CrossCheck" || mode == "Pair";
         }
 
         private static bool IsRestorationPuzzle(string mode)
@@ -1604,6 +1623,72 @@ namespace LostAndFound.Cases
             }
 
             GUI.Label(R(510, 860, 900, 52, scale), miniGameFeedback, body);
+        }
+
+        private void DrawMatchingEvidencePuzzle(
+            float scale, GUIStyle button, GUIStyle body)
+        {
+            Color ink = new Color(0.34f, 0.23f, 0.14f);
+            GUIStyle progress = LabelStyle(
+                17, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            int selectedCount = 0;
+
+            for (int i = 0; i < miniGamePicked.Length; i++)
+                if (miniGamePicked[i]) selectedCount++;
+
+            GUI.Label(R(500, 520, 940, 41, scale),
+                $"Выберите два совпадающих материала · {selectedCount}/2",
+                progress);
+
+            for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
+            {
+                float x = 420 + (i % 2) * 550;
+                float y = 574 + (i / 2) * 127;
+
+                bool picked = miniGamePicked[i];
+                string label = (picked ? "✓ " : "") +
+                    currentCase.MiniGameCards[i];
+
+                if (GUI.Button(R(x, y, 515, 112, scale), label, button))
+                {
+                    miniGamePicked[i] = !picked;
+
+                    int count = 0;
+                    for (int j = 0; j < miniGamePicked.Length; j++)
+                        if (miniGamePicked[j]) count++;
+
+                    if (count == 2)
+                    {
+                        bool correct = true;
+                        for (int j = 0; j < miniGamePicked.Length; j++)
+                        {
+                            bool needed = j == currentCase.MiniGameCorrectOrder[0] ||
+                                          j == currentCase.MiniGameCorrectOrder[1];
+                            if (miniGamePicked[j] != needed)
+                                correct = false;
+                        }
+
+                        if (correct)
+                        {
+                            CaseSession.CompleteMiniGame();
+                            miniGameFeedback = currentCase.MiniGameResult;
+                        }
+                        else
+                        {
+                            miniGameFeedback =
+                                "Эти материалы не подтверждают друг друга. " +
+                                "Проверьте ещё раз.";
+                            miniGamePicked = new bool[currentCase.MiniGameCards.Length];
+                        }
+                    }
+                }
+            }
+
+            GUI.Label(R(510, 841, 900, 81, scale),
+                string.IsNullOrEmpty(miniGameFeedback)
+                    ? "Найдите два независимых подтверждения одного и того же места."
+                    : miniGameFeedback,
+                body);
         }
 
         private void DrawRestorationPuzzle(float scale, GUIStyle button, GUIStyle body)
