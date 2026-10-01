@@ -52,6 +52,7 @@ namespace LostAndFound.Cases
         public string[] MiniGameCards { get; }
         public int[] MiniGameCorrectOrder { get; }
         public string MiniGameResult { get; }
+        public string RoomId { get; }
 
         public bool HasMiniGame => MiniGameAfterClue > 0 && MiniGameCards != null &&
                                    MiniGameCards.Length > 0 && MiniGameCorrectOrder != null &&
@@ -80,7 +81,8 @@ namespace LostAndFound.Cases
             string[] miniGameCards = null,
             int[] miniGameCorrectOrder = null,
             string miniGameResult = null,
-            string shortIntro = null)
+            string shortIntro = null,
+            string roomId = null)
         {
             Id = id;
             ClientName = clientName;
@@ -103,6 +105,7 @@ namespace LostAndFound.Cases
             MiniGameCards = miniGameCards;
             MiniGameCorrectOrder = miniGameCorrectOrder;
             MiniGameResult = miniGameResult;
+            RoomId = roomId;
         }
     }
 }
