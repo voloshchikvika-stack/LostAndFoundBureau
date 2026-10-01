@@ -1063,6 +1063,12 @@ namespace LostAndFound.Cases
 
         private void StartMiniGame()
         {
+            if (currentCase == null || !CaseSession.MiniGameReady)
+                return;
+
+            activeRoomId = currentCase.RoomId;
+            roomReturnMode = BureauMode.CaseFile;
+            temporaryRoomAccess = false;
             mode = BureauMode.MiniGame;
             miniGameStep = 0;
             miniGameFeedback = "";
@@ -1071,31 +1077,41 @@ namespace LostAndFound.Cases
 
         private void DrawMiniGame(float scale)
         {
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture);
-            DrawNineSlice(R(310, 125, 1300, 815, scale), folderPaperTexture, 20);
-            Color ink = new Color(0.27f, 0.17f, 0.11f);
-            GUIStyle title = LabelStyle(33, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
-            GUIStyle body = LabelStyle(20, FontStyle.Normal, TextAnchor.MiddleCenter, scale, ink);
-            GUIStyle progress = LabelStyle(18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
-            GUIStyle button = ButtonStyle(19, scale);
+            // Display the puzzle on a work card while leaving the upper part of
+            // the photo lab, archive or workshop illustration visible.
+            DrawNineSlice(R(360, 352, 1200, 675, scale),
+                folderPaperTexture, 22);
 
-            GUI.Label(R(370, 170, 1180, 50, scale), currentCase.MiniGameTitle, title);
-            GUI.Label(R(390, 237, 1140, 85, scale), currentCase.MiniGameInstruction, body);
+            Color ink = new Color(0.28f, 0.18f, 0.12f);
+            Color accent = new Color(0.50f, 0.34f, 0.23f);
+            GUIStyle heading = LabelStyle(27, FontStyle.Bold,
+                TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle body = LabelStyle(18, FontStyle.Normal,
+                TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle progress = LabelStyle(16, FontStyle.Bold,
+                TextAnchor.MiddleCenter, scale, accent);
+            GUIStyle button = ButtonStyle(17, scale);
+
+            GUI.Label(R(405, 378, 1110, 55, scale),
+                currentCase.MiniGameTitle, heading);
+            GUI.Label(R(430, 448, 1060, 67, scale),
+                currentCase.MiniGameInstruction, body);
+
             bool solved = CaseSession.MiniGameCompleted;
 
             if (!solved)
             {
-                GUI.Label(R(620, 320, 680, 35, scale),
-                    $"Фрагментов по порядку: {miniGameStep}/{miniGamePicked.Length}", progress);
+                GUI.Label(R(595, 516, 730, 34, scale),
+                    $"Выбрано по порядку: {miniGameStep}/{miniGamePicked.Length}", progress);
 
                 for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
                 {
-                    bool wasPicked = miniGamePicked[i];
-                    GUI.enabled = !wasPicked;
+                    bool picked = miniGamePicked[i];
+                    GUI.enabled = !picked;
 
-                    if (GUI.Button(R(480, 385 + i * 108, 960, 82, scale),
-                        wasPicked ? "✓  " + currentCase.MiniGameCards[i] :
-                        currentCase.MiniGameCards[i], button))
+                    if (GUI.Button(R(470, 561 + i * 94, 980, 77, scale),
+                        picked ? "✓ " + currentCase.MiniGameCards[i] :
+                            currentCase.MiniGameCards[i], button))
                     {
                         if (i == currentCase.MiniGameCorrectOrder[miniGameStep])
                         {
@@ -1108,7 +1124,7 @@ namespace LostAndFound.Cases
                                 miniGameFeedback = currentCase.MiniGameResult;
                             }
                             else
-                                miniGameFeedback = "Верно! Выберите следующее событие.";
+                                miniGameFeedback = "Верно! Выберите следующий фрагмент.";
                         }
                         else
                         {
@@ -1121,18 +1137,18 @@ namespace LostAndFound.Cases
                     GUI.enabled = true;
                 }
 
-                GUI.Label(R(540, 715, 840, 60, scale), miniGameFeedback, body);
+                GUI.Label(R(520, 860, 880, 55, scale), miniGameFeedback, body);
             }
             else
             {
-                GUI.Label(R(460, 385, 1000, 145, scale),
-                    "ЗАДАНИЕ ВЫПОЛНЕНО", title);
-                GUI.Label(R(460, 550, 1000, 130, scale),
+                GUI.Label(R(480, 558, 960, 70, scale),
+                    "ЗАДАНИЕ ВЫПОЛНЕНО", heading);
+                GUI.Label(R(460, 650, 1000, 138, scale),
                     currentCase.MiniGameResult, body);
             }
 
-            string backText = solved ? "ВЕРНУТЬСЯ К ДЕЛУ" : "ВЕРНУТЬСЯ";
-            if (GUI.Button(R(760, 820, 400, 66, scale), backText, button))
+            if (GUI.Button(R(755, 940, 410, 59, scale),
+                solved ? "ВЕРНУТЬСЯ К ДЕЛУ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
                 mode = BureauMode.CaseFile;
         }
 
