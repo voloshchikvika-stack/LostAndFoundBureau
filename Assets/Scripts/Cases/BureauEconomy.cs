@@ -323,8 +323,10 @@ namespace LostAndFound.Cases
         public static bool IsCollected(int caseIndex)
         {
             CaseDefinition entry = CaseDatabase.GetCase(caseIndex);
+            // A mistake must not make a collectible permanently impossible:
+            // every completed special case grants its story card.
             return entry != null && IsCollectibleCase(caseIndex) &&
-                   CaseResult(entry.Id) == 1;
+                   CaseResult(entry.Id) != 0;
         }
 
         public static int CollectedCount
