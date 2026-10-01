@@ -118,19 +118,17 @@ namespace LostAndFound.Cases
             }
         }
 
-        public static int ReputationTier
+        private static int TierForPoints(int reputation)
         {
-            get
-            {
-                int reputation = Reputation;
-                if (reputation >= 1400) return 5;
-                if (reputation >= 800) return 4;
-                if (reputation >= 400) return 3;
-                if (reputation >= 150) return 2;
-                if (reputation >= 40) return 1;
-                return 0;
-            }
+            if (reputation >= 1400) return 5;
+            if (reputation >= 800) return 4;
+            if (reputation >= 400) return 3;
+            if (reputation >= 150) return 2;
+            if (reputation >= 40) return 1;
+            return 0;
         }
+
+        public static int ReputationTier => TierForPoints(Reputation);
 
         public static string ReputationTitle
         {
@@ -287,12 +285,30 @@ namespace LostAndFound.Cases
 
             MigrateLegacyReputation();
             int reward = correct ? 150 : 100;
-            int reputation = correct ? 18 : 8;
+            int reputationGain = correct ? 18 : 8;
+
+            int previousReputation = Reputation;
+            int nextReputation = previousReputation + reputationGain;
+            int oldTier = TierForPoints(previousReputation);
+            int newTier = TierForPoints(nextReputation);
 
             PlayerPrefs.SetInt(Prefix + "Result." + caseId, correct ? 1 : -1);
             PlayerPrefs.SetInt(Prefix + "Coins", Coins + reward);
-            PlayerPrefs.SetInt(Prefix + "Reputation", Reputation + reputation);
+            PlayerPrefs.SetInt(Prefix + "Reputation", nextReputation);
             PlayerPrefs.SetInt(Prefix + "CompletedCases", CompletedUniqueCases + 1);
+
+            // Reputation milestones award expendable booster packs, instead of
+            // more rooms. One pack per reached rank (including skipped ranks).
+            for (int level = oldTier + 1; level <= newTier; level++)
+            {
+                string[] prizes = { "Moves5", "Bomb", "Plane", "ColorClear" };
+                foreach (string prize in prizes)
+                {
+                    PlayerPrefs.SetInt(Prefix + "Booster." + prize,
+                        BoosterCount(prize) + 1);
+                }
+            }
+
             PlayerPrefs.Save();
             return reward;
         }
