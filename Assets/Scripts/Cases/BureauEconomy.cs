@@ -30,7 +30,42 @@ namespace LostAndFound.Cases
         };
 
         public static IReadOnlyList<BureauUpgrade> Upgrades => upgrades;
-        public static int Coins => PlayerPrefs.GetInt(Prefix + "Coins", 0);
+
+        public static int Coins
+        {
+            get
+            {
+                MigrateOldDecorationPurchases();
+                return PlayerPrefs.GetInt(Prefix + "Coins", 0);
+            }
+        }
+
+        // Players who already bought furniture should not lose those coins
+        // when the prototype shop is replaced by functional departments.
+        private static void MigrateOldDecorationPurchases()
+        {
+            if (PlayerPrefs.GetInt(Prefix + "DecorRefunded", 0) == 1)
+                return;
+
+            int refund = 0;
+            string[] oldItems = { "Magnifier", "Plant", "Lamp", "Archive" };
+            int[] oldPrices = { 80, 120, 180, 240 };
+
+            for (int i = 0; i < oldItems.Length; i++)
+            {
+                string key = Prefix + "Upgrade." + oldItems[i];
+                if (PlayerPrefs.GetInt(key, 0) == 1)
+                {
+                    refund += oldPrices[i];
+                    PlayerPrefs.DeleteKey(key);
+                }
+            }
+
+            PlayerPrefs.SetInt(Prefix + "Coins",
+                PlayerPrefs.GetInt(Prefix + "Coins", 0) + refund);
+            PlayerPrefs.SetInt(Prefix + "DecorRefunded", 1);
+            PlayerPrefs.Save();
+        }
         public static bool Owns(string id) => PlayerPrefs.GetInt(Prefix + "Upgrade." + id, 0) == 1;
         public static int CaseResult(string caseId) => PlayerPrefs.GetInt(Prefix + "Result." + caseId, 0);
 
@@ -60,6 +95,7 @@ namespace LostAndFound.Cases
         public static void ResetEverything()
         {
             PlayerPrefs.DeleteKey(Prefix + "Coins");
+            PlayerPrefs.DeleteKey(Prefix + "DecorRefunded");
             foreach (BureauUpgrade upgrade in upgrades)
                 PlayerPrefs.DeleteKey(Prefix + "Upgrade." + upgrade.Id);
 
