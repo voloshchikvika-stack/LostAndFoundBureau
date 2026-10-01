@@ -1214,48 +1214,202 @@ namespace LostAndFound.Cases
 
         private void DrawArchive(float scale)
         {
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), overlayTexture);
             DrawNineSlice(R(280, 115, 1360, 860, scale), folderPaperTexture, 20);
+
             Color ink = new Color(0.28f, 0.18f, 0.12f);
-            GUIStyle title = LabelStyle(33, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle body = LabelStyle(18, FontStyle.Normal, TextAnchor.UpperLeft, scale, ink);
-            GUIStyle item = LabelStyle(20, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle button = ButtonStyle(17, scale);
+            GUIStyle title = LabelStyle(32, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle body = LabelStyle(17, FontStyle.Normal, TextAnchor.UpperLeft, scale, ink);
+            GUIStyle subtitle = LabelStyle(20, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle button = ButtonStyle(16, scale);
 
-            GUI.Label(R(350, 155, 900, 58, scale), "АРХИВ РАССЛЕДОВАНИЙ", title);
-            GUI.Label(R(350, 213, 1150, 43, scale),
-                "Здесь сохраняются решения завершённых дел.", body);
+            GUI.Label(R(350, 145, 850, 58, scale), "АРХИВ РАССЛЕДОВАНИЙ", title);
+            GUI.Label(R(350, 209, 1180, 48, scale),
+                $"Дело {CaseSession.CurrentCaseIndex + 1}/{CaseDatabase.TotalLevels} · " +
+                $"Завершено {BureauEconomy.CompletedUniqueCases} расследований", body);
 
-            for (int i = 0; i < CaseDatabase.Cases.Count; i++)
+            const int perPage = 5;
+            int maxPage = Mathf.Max(0, (CaseDatabase.Cases.Count - 1) / perPage);
+            archivePage = Mathf.Clamp(archivePage, 0, maxPage);
+
+            for (int i = 0; i < perPage; i++)
             {
-                CaseDefinition entry = CaseDatabase.GetCase(i);
+                int index = archivePage * perPage + i;
+                CaseDefinition entry = CaseDatabase.GetCase(index);
+                if (entry == null)
+                    break;
+
                 int result = BureauEconomy.CaseResult(entry.Id);
-                string outcome = result == 1 ? "НАЙДЕНО" : (result == -1 ? "НЕ НАЙДЕНО" : "НЕ ЗАВЕРШЕНО");
-                string label = $"ДЕЛО №{i + 1:00}: {entry.LostItemName}     {outcome}";
-                if (GUI.Button(R(350, 277 + i * 105, 1220, 82, scale), label, button))
-                    archiveDetailIndex = i;
+                string status = result == 1 ? "НАЙДЕНО" :
+                    (result == -1 ? "НЕ НАЙДЕНО" : "НЕ ЗАВЕРШЕНО");
+
+                if (GUI.Button(R(350, 269 + i * 98, 1210, 75, scale),
+                    $"№{index + 1:000} · {entry.ClientName}: {entry.LostItemName} · {status}",
+                    button))
+                    archiveDetailIndex = index;
             }
 
-            if (archiveDetailIndex >= 0 && archiveDetailIndex < CaseDatabase.Cases.Count)
+            GUI.enabled = archivePage > 0;
+            if (GUI.Button(R(352, 764, 252, 57, scale), "← НАЗАД", button))
+                archivePage--;
+            GUI.enabled = true;
+
+            GUI.Label(R(778, 772, 355, 42, scale),
+                $"СТРАНИЦА {archivePage + 1} / {maxPage + 1}",
+                subtitle);
+
+            GUI.enabled = archivePage < maxPage;
+            if (GUI.Button(R(1300, 764, 252, 57, scale), "ДАЛЕЕ →", button))
+                archivePage++;
+            GUI.enabled = true;
+
+            if (archiveDetailIndex >= 0)
             {
-                CaseDefinition selected = CaseDatabase.GetCase(archiveDetailIndex);
-                int result = BureauEconomy.CaseResult(selected.Id);
-                if (result != 0)
+                CaseDefinition entry = CaseDatabase.GetCase(archiveDetailIndex);
+                if (entry != null && BureauEconomy.CaseResult(entry.Id) != 0)
                 {
-                    GUI.Label(R(365, 525, 1110, 48, scale),
-                        $"Клиент: {selected.ClientName}", item);
-                    GUI.Label(R(365, 587, 1110, 180, scale),
-                        result == 1 ? selected.CorrectResponse :
-                        selected.CorrectAnswerExplanation, body);
+                    DrawNineSlice(R(370, 342, 1180, 388, scale),
+                        speechBubbleTexture, 20);
+
+                    GUI.Label(R(420, 363, 1080, 45, scale),
+                        $"ДЕЛО №{archiveDetailIndex + 1:000} · {entry.ClientName}",
+                        subtitle);
+
+                    GUI.Label(R(420, 426, 1080, 220, scale),
+                        entry.CorrectAnswerExplanation, body);
+
+                    if (GUI.Button(R(1150, 659, 315, 52, scale),
+                        "ЗАКРЫТЬ ЗАПИСЬ", button))
+                        archiveDetailIndex = -1;
                 }
                 else
                 {
-                    GUI.Label(R(365, 525, 1110, 120, scale),
-                        "Материалы этого дела откроются после завершения расследования.", body);
+                    archiveDetailIndex = -1;
                 }
             }
 
-            if (GUI.Button(R(760, 865, 400, 67, scale), "ВЕРНУТЬСЯ", button))
+            if (GUI.Button(R(761, 868, 400, 66, scale),
+                "ВЕРНУТЬСЯ", button))
+                CloseOverlay();
+        }
+
+        private void DrawCollection(float scale)
+        {
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
+                overlayTexture);
+            DrawNineSlice(R(280, 115, 1360, 860, scale), folderPaperTexture, 20);
+
+            Color ink = new Color(0.28f, 0.18f, 0.12f);
+            GUIStyle title = LabelStyle(31, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle body = LabelStyle(17, FontStyle.Normal, TextAnchor.UpperLeft, scale, ink);
+            GUIStyle subtitle = LabelStyle(21, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle button = ButtonStyle(16, scale);
+
+            GUI.Label(R(350, 151, 990, 55, scale),
+                "КОЛЛЕКЦИЯ ПАМЯТНЫХ ИСТОРИЙ", title);
+            GUI.Label(R(350, 213, 1110, 53, scale),
+                $"Собрано {BureauEconomy.CollectedCount}/{BureauEconomy.CollectibleTotal} " +
+                "памятных карточек. Для открытия нужна правильная разгадка.", body);
+
+            int maxPage = Mathf.Max(0,
+                (BureauEconomy.CollectibleTotal - 1) / 5);
+            collectionPage = Mathf.Clamp(collectionPage, 0, maxPage);
+
+            int first = collectionPage * 5;
+            int seen = 0;
+
+            for (int index = 0; index < CaseDatabase.Cases.Count; index++)
+            {
+                if (!BureauEconomy.IsCollectibleCase(index))
+                    continue;
+
+                int currentSlot = seen++;
+                if (currentSlot < first || currentSlot >= first + 5)
+                    continue;
+
+                CaseDefinition entry = CaseDatabase.GetCase(index);
+                bool collected = BureauEconomy.IsCollected(index);
+                float y = 280 + (currentSlot - first) * 98;
+
+                DrawNineSlice(R(350, y, 1200, 83, scale),
+                    speechBubbleTexture, 20);
+
+                string label = collected
+                    ? $"✦ ДЕЛО №{index + 1:000} · {entry.LostItemName}"
+                    : $"◇ ДЕЛО №{index + 1:000} · ЗАКРЫТО";
+                GUI.Label(R(390, y + 16, 1040, 48, scale),
+                    label, collected ? subtitle : body);
+            }
+
+            GUI.enabled = collectionPage > 0;
+            if (GUI.Button(R(355, 795, 290, 60, scale),
+                "← ПРЕДЫДУЩИЕ", button))
+                collectionPage--;
+            GUI.enabled = true;
+
+            GUI.Label(R(811, 803, 330, 40, scale),
+                $"{collectionPage + 1} / {maxPage + 1}", subtitle);
+
+            GUI.enabled = collectionPage < maxPage;
+            if (GUI.Button(R(1262, 795, 290, 60, scale),
+                "СЛЕДУЮЩИЕ →", button))
+                collectionPage++;
+            GUI.enabled = true;
+
+            if (GUI.Button(R(761, 880, 400, 61, scale),
+                "ВЕРНУТЬСЯ", button))
+                CloseOverlay();
+        }
+
+        private void DrawReputation(float scale)
+        {
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
+                overlayTexture);
+            DrawNineSlice(R(330, 170, 1260, 780, scale),
+                folderPaperTexture, 20);
+
+            Color ink = new Color(0.28f, 0.18f, 0.12f);
+            GUIStyle title = LabelStyle(33, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle body = LabelStyle(20, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle heading = LabelStyle(25, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle button = ButtonStyle(18, scale);
+
+            GUI.Label(R(395, 205, 1130, 58, scale),
+                "РЕПУТАЦИЯ ДЕТЕКТИВНОГО БЮРО", title);
+
+            GUI.Label(R(460, 294, 1000, 45, scale),
+                $"{BureauEconomy.ReputationTitle} · {BureauEconomy.Reputation} очков",
+                heading);
+
+            GUI.Label(R(460, 344, 1000, 65, scale),
+                $"Завершено дел: {BureauEconomy.CompletedUniqueCases} · " +
+                $"Текущий уровень: {CaseSession.CurrentCaseIndex + 1}/{CaseDatabase.TotalLevels}",
+                body);
+
+            string[] tiers =
+            {
+                "40 · Знакомое бюро",
+                "150 · Городское бюро",
+                "400 · Бюро с репутацией",
+                "800 · Экспертное бюро",
+                "1400 · Легендарное бюро"
+            };
+
+            for (int i = 0; i < tiers.Length; i++)
+            {
+                string prefix = BureauEconomy.ReputationTier >= i + 1
+                    ? "✓" : "○";
+
+                GUI.Label(R(495, 435 + i * 65, 1020, 55, scale),
+                    prefix + "  " + tiers[i], body);
+            }
+
+            GUI.Label(R(460, 767, 1050, 63, scale),
+                "Репутация растёт после первого завершения каждого дела. " +
+                "Правильные ответы дают больше очков.", body);
+
+            if (GUI.Button(R(755, 862, 410, 66, scale),
+                "ВЕРНУТЬСЯ В БЮРО", button))
                 CloseOverlay();
         }
 
