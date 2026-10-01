@@ -14,6 +14,7 @@ namespace LostAndFound.Cases
 
         private bool expanded = true;
         private bool resetConfirmation;
+        private string caseNumberField = "20";
         private Texture2D panelBackground;
         private GUIStyle titleStyle;
         private GUIStyle labelStyle;
@@ -74,7 +75,7 @@ namespace LostAndFound.Cases
             bool inMatch3 = SceneManager.GetActiveScene().name == "Match3";
             float height = !expanded ? 52f :
                 resetConfirmation ? 196f :
-                inMatch3 ? 280f : 230f;
+                inMatch3 ? 337f : 289f;
 
             return new Rect(Margin, Margin, PanelWidth * scale, height * scale);
         }
@@ -172,9 +173,22 @@ namespace LostAndFound.Cases
                 resetConfirmation = true;
             }
 
+            GUI.Label(At(16, 229, 128, 31, scale),
+                "Дело №1–200:", labelStyle);
+            caseNumberField = GUI.TextField(
+                At(139, 229, 85, 30, scale), caseNumberField, 3);
+
+            if (GUI.Button(At(229, 225, 117, 41, scale),
+                "ПЕРЕЙТИ", buttonStyle))
+            {
+                if (int.TryParse(caseNumberField, out int caseNumber) &&
+                    CaseSession.DebugSelectCase(caseNumber - 1))
+                    SceneManager.LoadScene("SampleScene");
+            }
+
             if (SceneManager.GetActiveScene().name == "Match3")
             {
-                if (GUI.Button(At(14, 226, 332, 41, scale),
+                if (GUI.Button(At(14, 281, 332, 41, scale),
                     "ПРОПУСТИТЬ MATCH-3 + УЛИКА", buttonStyle))
                 {
                     Match3Board board = Object.FindFirstObjectByType<Match3Board>();
@@ -204,7 +218,7 @@ namespace LostAndFound.Cases
         private void DrawResetConfirmation(float scale)
         {
             GUI.Label(At(17, 53, 324, 59, scale),
-                "Стереть дела, все улики, монеты\nи купленные отделы?",
+                "Стереть дела, улики, репутацию,\nмонеты, оборудование и коллекцию?",
                 labelStyle);
 
             if (GUI.Button(At(14, 130, 155, 48, scale),
