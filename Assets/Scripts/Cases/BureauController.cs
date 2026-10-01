@@ -17,6 +17,8 @@ namespace LostAndFound.Cases
             Room,
             Shop,
             Archive,
+            Collection,
+            Reputation,
             ResetConfirm,
             Finished
         }
@@ -28,6 +30,10 @@ namespace LostAndFound.Cases
         private bool[] miniGamePicked = new bool[0];
         private string miniGameFeedback = "";
         private int archiveDetailIndex = -1;
+        private int archivePage;
+        private int collectionPage;
+        private int shopTab;
+        private int equipmentPage;
         private int lastReward;
         private string activeRoomId;
         private BureauMode roomReturnMode;
@@ -352,6 +358,12 @@ namespace LostAndFound.Cases
                     break;
                 case BureauMode.Archive:
                     DrawArchive(scale);
+                    break;
+                case BureauMode.Collection:
+                    DrawCollection(scale);
+                    break;
+                case BureauMode.Reputation:
+                    DrawReputation(scale);
                     break;
                 case BureauMode.ResetConfirm:
                     DrawResetConfirm(scale);
@@ -831,8 +843,16 @@ namespace LostAndFound.Cases
             GUI.Label(R(650, 195, 900, 38, scale), heading, title);
             GUI.Label(R(650, 255, 900, 190, scale), reactionText, body);
             if (lastReward > 0)
+            {
+                string repReward = reactionWasCorrect
+                    ? "+18 репутации" : "+8 репутации";
+                string cardNotice = reactionWasCorrect &&
+                    BureauEconomy.IsCollectibleCase(CaseSession.CurrentCaseIndex)
+                    ? " · карточка в коллекции" : "";
+
                 GUI.Label(R(650, 445, 900, 38, scale),
-                    $"+{lastReward} монет", title);
+                    $"+{lastReward} монет · {repReward}{cardNotice}", title);
+            }
         }
 
         private void DrawTopBar(float scale)
@@ -848,11 +868,19 @@ namespace LostAndFound.Cases
             DrawNineSlice(R(1315, 20, 150, 58, scale), speechBubbleTexture, 24);
             GUI.Label(R(1330, 29, 120, 38, scale), $"{BureauEconomy.Coins} ◈", info);
 
-            if (GUI.Button(R(1485, 20, 175, 58, scale), "ОТДЕЛЫ", button))
+            if (GUI.Button(R(1485, 20, 175, 58, scale), "РАЗВИТИЕ", button))
                 OpenOverlay(BureauMode.Shop);
 
             if (GUI.Button(R(1678, 20, 200, 58, scale), "АРХИВ", button))
                 OpenOverlay(BureauMode.Archive);
+
+            if (GUI.Button(R(1050, 20, 245, 58, scale),
+                $"РЕПУТАЦИЯ {BureauEconomy.Reputation}", button))
+                OpenOverlay(BureauMode.Reputation);
+
+            if (GUI.Button(R(1678, 153, 200, 52, scale),
+                "КОЛЛЕКЦИЯ", button))
+                OpenOverlay(BureauMode.Collection);
 
             if (GUI.Button(R(1678, 90, 200, 52, scale), "НОВАЯ ИГРА", button))
                 OpenOverlay(BureauMode.ResetConfirm);
