@@ -392,9 +392,9 @@ namespace LostAndFound.Cases
                     clientName: client,
                     lostItemName: pattern.ObjectName,
                     story:
-                        "У меня пропали " + pattern.ObjectName +
-                        ". После нескольких остановок я заметил(а) пропажу. " +
-                        "Я успел(а) заглянуть в разные места, поэтому очень хочу восстановить маршрут. " +
+                        "Помогите, пожалуйста, отыскать " + pattern.ObjectName +
+                        ". Сегодня пришлось посетить несколько мест, а затем пропажа обнаружилась. " +
+                        "Хочется восстановить маршрут и понять, что произошло. " +
                         "Номер обращения: " + tracking + ".",
                     clues: new[]
                     {
@@ -414,15 +414,16 @@ namespace LostAndFound.Cases
                     answerOptions: answerOptions,
                     correctAnswerIndex: correctIndex,
                     correctResponse:
-                        "Спасибо! " + pattern.ObjectName +
-                        " нашлись в нужном месте. Теперь я смогу их забрать!",
+                        "Спасибо! Пропажа нашлась в нужном месте. " +
+                        "Я смогу вернуть дорогую мне вещь!",
                     wrongResponse:
-                        "К сожалению, там их не оказалось. Давайте сверим собранные материалы.",
+                        "К сожалению, в этом месте ничего не оказалось. " +
+                        "Давайте сверим собранные материалы.",
                     correctAnswerExplanation:
                         "Правильный ответ: " + pattern.Place +
                         ". " + pattern.Hint + " " + pattern.RoomHint,
                     inquiryQuestion: "Что вы помните о последнем месте?",
-                    inquiryAnswer: "Я сохранил(а) маршрут и номер обращения " +
+                    inquiryAnswer: "В записях сохранился номер обращения " +
                         tracking + ". Возможно, в документах найдётся ещё одна деталь.",
                     clueResponses: new[]
                     {
@@ -442,8 +443,8 @@ namespace LostAndFound.Cases
                         : room == "ArchiveRoom"
                             ? "Архив документов. " + pattern.RoomHint
                             : "Мастерская находок. " + pattern.RoomHint,
-                    shortIntro: "У меня пропали " + pattern.ObjectName +
-                        ". Я очень хочу их вернуть. Поможете разобраться?",
+                    shortIntro: "Не могу найти " + pattern.ObjectName +
+                        ". Очень хочу вернуть эту вещь. Поможете разобраться?",
                     roomId: room,
                     miniGameMode: mode
                 ));
