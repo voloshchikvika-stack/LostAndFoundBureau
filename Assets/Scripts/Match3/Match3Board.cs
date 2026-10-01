@@ -117,8 +117,39 @@ namespace LostAndFound.Match3
                 return;
 
             if (TryGetPointerDown(out Vector2 screenPosition))
+            {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                // Debug panel lives above the board and must not click pieces.
+                if (BureauDebugPanel.IsPointerOverPanel(screenPosition))
+                    return;
+#endif
                 HandlePointer(screenPosition);
+            }
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public bool DebugSkipAndGrantClue()
+        {
+            if (finishFlowStarted || CaseSession.CurrentCase == null ||
+                CaseSession.CompletedClues >= CaseSession.CurrentCase.RequiredClues)
+                return false;
+
+            // An in-flight swap or a loss countdown must not overwrite the
+            // skipped result or trigger a duplicate scene transition.
+            StopAllCoroutines();
+            inputLocked = true;
+            gameEnded = true;
+            levelWon = true;
+            finishFlowStarted = true;
+            collectedTarget = targetCount;
+            DeselectCurrent();
+
+            // Reuse the same persisted clue + popup as a normal win.
+            CaseSession.CompleteCurrentSearch();
+            SceneManager.LoadScene("SampleScene");
+            return true;
+        }
+#endif
 
         private void DisablePrototypeCanvas()
         {
