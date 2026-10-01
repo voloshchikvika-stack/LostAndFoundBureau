@@ -1455,6 +1455,14 @@ namespace LostAndFound.Cases
 
             bool solved = CaseSession.MiniGameCompleted;
 
+            int availableEquipment = BureauEconomy.OwnedEquipmentCount(activeRoomId);
+            if (!solved && availableEquipment > 0)
+            {
+                if (GUI.Button(R(1150, 280, 385, 56, scale),
+                    "ПОДСКАЗКА ОБОРУДОВАНИЯ", button))
+                    miniGameFeedback = BuildEquipmentHint(availableEquipment);
+            }
+
             if (!solved && IsChoicePuzzle(currentCase.MiniGameMode))
             {
                 DrawPhotoPuzzle(scale, button, body);
@@ -1514,6 +1522,46 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(755, 940, 410, 59, scale),
                 solved ? "ПРОЧИТАТЬ УЛИКИ В ДЕЛЕ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
                 mode = BureauMode.CaseFile;
+        }
+
+        private string BuildEquipmentHint(int tier)
+        {
+            if (currentCase == null || currentCase.MiniGameCorrectOrder == null ||
+                currentCase.MiniGameCorrectOrder.Length == 0)
+                return "Для этого дела оборудование пока не нашло подсказок.";
+
+            int[] order = currentCase.MiniGameCorrectOrder;
+            string[] cards = currentCase.MiniGameCards;
+
+            if (IsChoicePuzzle(currentCase.MiniGameMode))
+            {
+                int index = Mathf.Clamp(order[0], 0, cards.Length - 1);
+
+                if (tier == 1)
+                    return "Оборудование советует проверить запись " +
+                        (index + 1) + ".";
+                if (tier == 2)
+                    return "Внимательно изучите: " + cards[index];
+
+                return "Полный анализ: " + currentCase.MiniGameResult;
+            }
+
+            if (tier == 1)
+                return "Начните с фрагмента: " + cards[order[0]];
+
+            if (tier == 2 && order.Length > 1)
+                return "Первыми идут: " + cards[order[0]] + " → " +
+                    cards[order[1]];
+
+            string result = "Рекомендуемый порядок: ";
+
+            for (int i = 0; i < order.Length; i++)
+            {
+                if (i > 0) result += " → ";
+                result += cards[order[i]];
+            }
+
+            return result;
         }
 
         private static bool IsChoicePuzzle(string mode)
