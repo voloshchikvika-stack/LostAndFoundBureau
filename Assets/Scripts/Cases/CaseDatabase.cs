@@ -346,7 +346,12 @@ namespace LostAndFound.Cases
                 string tracking = "Н-" + (2000 + index * 37).ToString();
                 string room = index % 3 == 0 ? "PhotoLab" :
                               index % 3 == 1 ? "ArchiveRoom" : "Workshop";
-                int challenge = (index / 3) % 4;
+                // New investigation variants appear progressively, not all at once.
+                int variants = levelNumber >= 125 ? 4 :
+                               levelNumber >= 70 ? 3 :
+                               levelNumber >= 20 ? 2 : 1;
+                int challenge = (index / 3) % variants;
+                bool extendedCase = levelNumber % 20 == 0;
                 string mode = room == "PhotoLab"
                     ? new[] { "Spot", "Compare", "Focus", "Sequence" }[challenge]
                     : room == "ArchiveRoom"
@@ -389,6 +394,44 @@ namespace LostAndFound.Cases
                 answerOptions[3] = answerOptions[correctIndex];
                 answerOptions[correctIndex] = temp;
 
+                int difficulty = Mathf.Min(6, levelNumber / 30);
+
+                Match3LevelDefinition firstLevel = new Match3LevelDefinition(
+                    moves: 22 + index % 5 - Mathf.Min(2, difficulty / 3),
+                    targetType: index % 6,
+                    targetCount: 12 + index % 6 + difficulty,
+                    bombsEnabled: true,
+                    planesEnabled: true,
+                    colorClearEnabled: true);
+
+                Match3LevelDefinition[] caseLevels = extendedCase
+                    ? new[]
+                    {
+                        firstLevel,
+                        new Match3LevelDefinition(
+                            moves: 22 + index % 4,
+                            targetType: (index + 3) % 6,
+                            targetCount: 14 + index % 5 + difficulty,
+                            bombsEnabled: true,
+                            planesEnabled: true,
+                            colorClearEnabled: true)
+                    }
+                    : new[] { firstLevel };
+
+                string[] caseClues = extendedCase
+                    ? new[]
+                    {
+                        "Улика из поиска №" + tracking + ": " + pattern.Hint,
+                        "Дополнительная находка по делу №" + tracking +
+                        ": удалось восстановить часть маршрута. " +
+                        "Нужно сверить следы с материалами выбранного отдела."
+                    }
+                    : new[]
+                    {
+                        "Улика из поиска №" + tracking + ": " + pattern.Hint +
+                        " Для подтверждения нужно исследование в соответствующем отделе."
+                    };
+
                 generated.Add(new CaseDefinition(
                     id: "Case" + caseTag,
                     clientName: client,
@@ -398,21 +441,8 @@ namespace LostAndFound.Cases
                         ". Сегодня пришлось посетить несколько мест, а затем пропажа обнаружилась. " +
                         "Хочется восстановить маршрут и понять, что произошло. " +
                         "Номер обращения: " + tracking + ".",
-                    clues: new[]
-                    {
-                        "Улика из поиска №" + tracking + ": " + pattern.Hint +
-                        " Для подтверждения нужно исследование в соответствующем отделе."
-                    },
-                    levels: new[]
-                    {
-                        new Match3LevelDefinition(
-                            moves: 20 + index % 7,
-                            targetType: index % 6,
-                            targetCount: 12 + index % 8,
-                            bombsEnabled: true,
-                            planesEnabled: true,
-                            colorClearEnabled: true)
-                    },
+                    clues: caseClues,
+                    levels: caseLevels,
                     answerOptions: answerOptions,
                     correctAnswerIndex: correctIndex,
                     correctResponse:
@@ -427,11 +457,17 @@ namespace LostAndFound.Cases
                     inquiryQuestion: "Что вы помните о последнем месте?",
                     inquiryAnswer: "В записях сохранился номер обращения " +
                         tracking + ". Возможно, в документах найдётся ещё одна деталь.",
-                    clueResponses: new[]
-                    {
-                        "Это полезная находка. Давайте проверим её в отделе расследований."
-                    },
-                    miniGameAfterClue: 1,
+                    clueResponses: extendedCase
+                        ? new[]
+                        {
+                            "Первый след найден, но давайте проверим ещё одно место.",
+                            "Теперь материалов достаточно для исследования в отделе."
+                        }
+                        : new[]
+                        {
+                            "Это полезная находка. Давайте проверим её в отделе расследований."
+                        },
+                    miniGameAfterClue: caseClues.Length,
                     miniGameTitle: taskTitle + " · дело №" + caseTag,
                     miniGameInstruction: selectOne
                         ? "Выберите материал, который подтверждает место пропажи."
