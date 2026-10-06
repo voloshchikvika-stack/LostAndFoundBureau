@@ -40,6 +40,11 @@ namespace LostAndFound.Cases
         private bool temporaryRoomAccess;
         private int[] assemblySlots = { -1, -1, -1 };
         private int selectedFragment = -1;
+        private int draggedPuzzleItem = -1;
+        private bool draggingPuzzleItem;
+        private Vector2 puzzleDragOffset;
+        private int enlargedPhotoIndex = -1;
+        private Texture2D[] photoEvidenceImages = new Texture2D[0];
 
         private Texture2D officeBackground;
         private Texture2D clientImage;
@@ -1435,9 +1440,15 @@ namespace LostAndFound.Cases
             miniGameFeedback = "";
             miniGamePicked = new bool[currentCase.MiniGameCards.Length];
             selectedFragment = -1;
+            draggedPuzzleItem = -1;
+            draggingPuzzleItem = false;
+            enlargedPhotoIndex = -1;
             assemblySlots = new int[currentCase.MiniGameCards.Length];
+
             for (int i = 0; i < assemblySlots.Length; i++)
                 assemblySlots[i] = -1;
+
+            LoadPuzzleVisuals();
         }
 
         private void DrawMiniGame(float scale)
