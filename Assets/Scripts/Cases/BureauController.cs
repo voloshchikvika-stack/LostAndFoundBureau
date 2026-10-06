@@ -1674,43 +1674,7 @@ namespace LostAndFound.Cases
             }
             else if (!solved)
             {
-                GUI.Label(R(595, 516, 730, 34, scale),
-                    $"Выбрано по порядку: {miniGameStep}/{miniGamePicked.Length}", progress);
-
-                for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
-                {
-                    bool picked = miniGamePicked[i];
-                    GUI.enabled = !picked;
-
-                    if (GUI.Button(R(470, 561 + i * 94, 980, 77, scale),
-                        picked ? "✓ " + currentCase.MiniGameCards[i] :
-                            currentCase.MiniGameCards[i], button))
-                    {
-                        if (i == currentCase.MiniGameCorrectOrder[miniGameStep])
-                        {
-                            miniGamePicked[i] = true;
-                            miniGameStep++;
-
-                            if (miniGameStep == miniGamePicked.Length)
-                            {
-                                CaseSession.CompleteMiniGame();
-                                miniGameFeedback = currentCase.MiniGameResult;
-                            }
-                            else
-                                miniGameFeedback = "Верно! Выберите следующий фрагмент.";
-                        }
-                        else
-                        {
-                            miniGameStep = 0;
-                            miniGamePicked = new bool[currentCase.MiniGameCards.Length];
-                            miniGameFeedback = "Порядок неверный. Попробуйте ещё раз.";
-                        }
-                    }
-
-                    GUI.enabled = true;
-                }
-
-                GUI.Label(R(520, 860, 880, 55, scale), miniGameFeedback, body);
+                DrawArchiveOrderPuzzle(scale, button, body);
             }
             else
             {
