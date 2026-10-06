@@ -464,6 +464,7 @@ namespace LostAndFound.Cases
                     targetCount: 12 + index % 6 + difficulty,
                     bombsEnabled: true,
                     planesEnabled: true,
+                    rocketsEnabled: true,
                     colorClearEnabled: true);
 
                 Match3LevelDefinition[] caseLevels = extendedCase
