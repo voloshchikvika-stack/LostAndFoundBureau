@@ -38,8 +38,11 @@ namespace LostAndFound.Match3
         private int collectedTarget;
         private bool bombsEnabled;
         private bool planesEnabled;
+        private bool rocketsEnabled;
         private bool colorClearEnabled;
         private string selectedInventoryBooster;
+        private Sprite rocketHorizontalBonusSprite;
+        private Sprite rocketVerticalBonusSprite;
         private Sprite planeBonusSprite;
         private Sprite bombBonusSprite;
         private Sprite colorClearBonusSprite;
@@ -100,6 +103,7 @@ namespace LostAndFound.Match3
                 targetCount = level.TargetCount;
                 bombsEnabled = level.BombsEnabled;
                 planesEnabled = level.PlanesEnabled;
+                rocketsEnabled = level.RocketsEnabled;
                 colorClearEnabled = level.ColorClearEnabled;
             }
 
@@ -184,6 +188,18 @@ namespace LostAndFound.Match3
                         out pieceTextures[i]);
                 }
             }
+
+            rocketHorizontalBonusSprite =
+                Resources.Load<Sprite>("Match3/Bonuses/RocketHorizontal");
+            if (rocketHorizontalBonusSprite == null)
+                rocketHorizontalBonusSprite = Match3VisualFactory.CreateBonusSprite(
+                    Match3BonusKind.RocketHorizontal, out _);
+
+            rocketVerticalBonusSprite =
+                Resources.Load<Sprite>("Match3/Bonuses/RocketVertical");
+            if (rocketVerticalBonusSprite == null)
+                rocketVerticalBonusSprite = Match3VisualFactory.CreateBonusSprite(
+                    Match3BonusKind.RocketVertical, out _);
 
             planeBonusSprite = Resources.Load<Sprite>("Match3/Bonuses/Plane");
             if (planeBonusSprite == null)
