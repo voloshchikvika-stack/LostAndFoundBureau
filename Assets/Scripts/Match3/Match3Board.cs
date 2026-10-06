@@ -603,10 +603,133 @@ namespace LostAndFound.Match3
             }
         }
 
+        private IEnumerator ResolveBonusCombination(
+            Match3Piece first,
+            Match3Piece second,
+            Match3BonusKind firstKind,
+            Match3BonusKind secondKind)
+        {
+            HashSet<Match3Piece> affected = new HashSet<Match3Piece>();
+            HashSet<Match3Piece> comboPieces =
+                new HashSet<Match3Piece> { first, second };
+
+            affected.Add(first);
+            affected.Add(second);
+
+            int centerColumn = first.Column;
+            int centerRow = first.Row;
+
+            bool firstRainbow = firstKind == Match3BonusKind.ColorClear;
+            bool secondRainbow = secondKind == Match3BonusKind.ColorClear;
+
+            if (firstRainbow && secondRainbow)
+            {
+                AddAllPieces(affected);
+            }
+            else if (firstRainbow || secondRainbow)
+            {
+                Match3Piece other = firstRainbow ? second : first;
+                Match3BonusKind otherKind = firstRainbow ? secondKind : firstKind;
+                int typeToTransform = FindMostCommonType();
+
+                List<Match3Piece> transformed =
+                    TransformPiecesOfTypeToBonus(typeToTransform, otherKind);
+
+                // Briefly show the conversion before everything activates.
+                yield return new WaitForSeconds(0.18f);
+
+                AddRawBonusEffect(other, -1, affected);
+
+                foreach (Match3Piece piece in transformed)
+                    affected.Add(piece);
+
+                ExpandChainedBonuses(affected, comboPieces);
+            }
+            else if (IsRocket(firstKind) && IsRocket(secondKind))
+            {
+                // Homescapes: one complete row + one complete column,
+                // regardless of the original rocket directions.
+                AddRow(centerRow, affected);
+                AddColumn(centerColumn, affected);
+                ExpandChainedBonuses(affected, comboPieces);
+            }
+            else if (firstKind == Match3BonusKind.Bomb &&
+                     secondKind == Match3BonusKind.Bomb)
+            {
+                // Base bomb radius is 2 cells. Double-bomb doubles it.
+                AddBombArea(centerColumn, centerRow, affected, 4);
+                ExpandChainedBonuses(affected, comboPieces);
+            }
+            else if ((firstKind == Match3BonusKind.Bomb && IsRocket(secondKind)) ||
+                     (secondKind == Match3BonusKind.Bomb && IsRocket(firstKind)))
+            {
+                // Three horizontal rows + three vertical columns.
+                AddTripleCross(centerColumn, centerRow, affected);
+                ExpandChainedBonuses(affected, comboPieces);
+            }
+            else if (firstKind == Match3BonusKind.Plane &&
+                     secondKind == Match3BonusKind.Plane)
+            {
+                AddPlaneTakeoff(centerColumn, centerRow, affected);
+
+                foreach (Match3Piece target in FindPlaneTargets(
+                    3, centerColumn, centerRow))
+                {
+                    affected.Add(target);
+                    AddPlaneTakeoff(target.Column, target.Row, affected);
+                }
+
+                ExpandChainedBonuses(affected, comboPieces);
+            }
+            else if ((firstKind == Match3BonusKind.Plane &&
+                      (IsRocket(secondKind) ||
+                       secondKind == Match3BonusKind.Bomb)) ||
+                     (secondKind == Match3BonusKind.Plane &&
+                      (IsRocket(firstKind) ||
+                       firstKind == Match3BonusKind.Bomb)))
+            {
+                Match3BonusKind carriedKind =
+                    firstKind == Match3BonusKind.Plane
+                        ? secondKind
+                        : firstKind;
+
+                AddPlaneTakeoff(centerColumn, centerRow, affected);
+
+                Match3Piece target = FindPlaneTarget(
+                    centerColumn, centerRow);
+
+                if (target != null)
+                {
+                    affected.Add(target);
+                    AddPowerUpEffectAt(
+                        carriedKind,
+                        target.Column,
+                        target.Row,
+                        affected);
+                }
+
+                ExpandChainedBonuses(affected, comboPieces);
+            }
+            else
+            {
+                AddRawBonusEffect(first, -1, affected);
+                AddRawBonusEffect(second, -1, affected);
+                ExpandChainedBonuses(affected, comboPieces);
+            }
+
+            ClearMatches(affected);
+            yield return new WaitForSeconds(clearDelay);
+            yield return CollapseColumns();
+            yield return RefillBoard();
+            yield return ResolveBoard(FindAllMatches());
+        }
+
         private Sprite GetBonusSprite(Match3BonusKind kind)
         {
             return kind switch
             {
+                Match3BonusKind.RocketHorizontal => rocketHorizontalBonusSprite,
+                Match3BonusKind.RocketVertical => rocketVerticalBonusSprite,
                 Match3BonusKind.Plane => planeBonusSprite,
                 Match3BonusKind.Bomb => bombBonusSprite,
                 Match3BonusKind.ColorClear => colorClearBonusSprite,
@@ -614,7 +737,14 @@ namespace LostAndFound.Match3
             };
         }
 
-        private HashSet<Match3Piece> FindPlaneSquare(Match3Piece first, Match3Piece second)
+        private static bool IsRocket(Match3BonusKind kind)
+        {
+            return kind == Match3BonusKind.RocketHorizontal ||
+                   kind == Match3BonusKind.RocketVertical;
+        }
+
+        private HashSet<Match3Piece> FindPlaneSquare(
+            Match3Piece first, Match3Piece second)
         {
             foreach (Match3Piece candidate in new[] { first, second })
             {
@@ -643,8 +773,10 @@ namespace LostAndFound.Match3
                         if (a.IsBonus || b.IsBonus || d.IsBonus || e.IsBonus)
                             continue;
 
-                        if (a.Type == candidate.Type && b.Type == candidate.Type &&
-                            d.Type == candidate.Type && e.Type == candidate.Type)
+                        if (a.Type == candidate.Type &&
+                            b.Type == candidate.Type &&
+                            d.Type == candidate.Type &&
+                            e.Type == candidate.Type)
                         {
                             return new HashSet<Match3Piece> { a, b, d, e };
                         }
@@ -655,21 +787,24 @@ namespace LostAndFound.Match3
             return null;
         }
 
-        private Match3Piece FindFiveLineHost(Match3Piece first, Match3Piece second)
+        private Match3Piece FindFiveLineHost(
+            Match3Piece first, Match3Piece second)
         {
             foreach (Match3Piece candidate in new[] { first, second })
             {
                 if (candidate == null || candidate.IsBonus)
                     continue;
 
-                if (CountLine(candidate, 1, 0) >= 5 || CountLine(candidate, 0, 1) >= 5)
+                if (CountLine(candidate, 1, 0) >= 5 ||
+                    CountLine(candidate, 0, 1) >= 5)
                     return candidate;
             }
 
             return null;
         }
 
-        private Match3Piece FindBombHost(Match3Piece first, Match3Piece second)
+        private Match3Piece FindBombHost(
+            Match3Piece first, Match3Piece second)
         {
             foreach (Match3Piece candidate in new[] { first, second })
             {
@@ -679,8 +814,41 @@ namespace LostAndFound.Match3
                 int horizontal = CountLine(candidate, 1, 0);
                 int vertical = CountLine(candidate, 0, 1);
 
-                if (horizontal >= 3 && vertical >= 3 && horizontal + vertical - 1 >= 5)
+                if (horizontal >= 3 &&
+                    vertical >= 3 &&
+                    horizontal + vertical - 1 >= 5)
                     return candidate;
+            }
+
+            return null;
+        }
+
+        private Match3Piece FindRocketHost(
+            Match3Piece first,
+            Match3Piece second,
+            out Match3BonusKind kind)
+        {
+            kind = Match3BonusKind.None;
+
+            foreach (Match3Piece candidate in new[] { first, second })
+            {
+                if (candidate == null || candidate.IsBonus)
+                    continue;
+
+                int horizontal = CountLine(candidate, 1, 0);
+                int vertical = CountLine(candidate, 0, 1);
+
+                if (horizontal == 4)
+                {
+                    kind = Match3BonusKind.RocketHorizontal;
+                    return candidate;
+                }
+
+                if (vertical == 4)
+                {
+                    kind = Match3BonusKind.RocketVertical;
+                    return candidate;
+                }
             }
 
             return null;
@@ -703,7 +871,10 @@ namespace LostAndFound.Match3
             while (IsInside(column, row))
             {
                 Match3Piece piece = pieces[column, row];
-                if (piece == null || piece.IsBonus || piece.Type != center.Type)
+
+                if (piece == null ||
+                    piece.IsBonus ||
+                    piece.Type != center.Type)
                     break;
 
                 count++;
@@ -714,7 +885,19 @@ namespace LostAndFound.Match3
             return count;
         }
 
-        private void AddBonusEffect(Match3Piece bonus, int swappedType, HashSet<Match3Piece> affected)
+        private void AddBonusEffect(
+            Match3Piece bonus,
+            int swappedType,
+            HashSet<Match3Piece> affected)
+        {
+            AddRawBonusEffect(bonus, swappedType, affected);
+            ExpandChainedBonuses(affected);
+        }
+
+        private void AddRawBonusEffect(
+            Match3Piece bonus,
+            int swappedType,
+            HashSet<Match3Piece> affected)
         {
             if (bonus == null)
                 return;
@@ -723,40 +906,127 @@ namespace LostAndFound.Match3
 
             switch (bonus.BonusKind)
             {
+                case Match3BonusKind.RocketHorizontal:
+                    AddRow(bonus.Row, affected);
+                    break;
+
+                case Match3BonusKind.RocketVertical:
+                    AddColumn(bonus.Column, affected);
+                    break;
+
                 case Match3BonusKind.Bomb:
-                    AddBombArea(bonus.Column, bonus.Row, affected);
+                    AddBombArea(
+                        bonus.Column,
+                        bonus.Row,
+                        affected,
+                        2);
                     break;
 
                 case Match3BonusKind.Plane:
-                    AddPlaneArea(bonus.Column, bonus.Row, affected);
+                    AddPlaneArea(
+                        bonus.Column,
+                        bonus.Row,
+                        affected);
                     break;
 
                 case Match3BonusKind.ColorClear:
-                    int typeToClear = swappedType >= 0 ? swappedType : FindMostCommonType();
+                    int typeToClear = swappedType >= 0
+                        ? swappedType
+                        : FindMostCommonType();
                     AddAllOfType(typeToClear, affected);
                     break;
             }
-
-            ExpandChainedBonuses(affected);
         }
 
-        private void AddBombArea(int centerColumn, int centerRow, HashSet<Match3Piece> affected)
+        private void AddPowerUpEffectAt(
+            Match3BonusKind kind,
+            int column,
+            int row,
+            HashSet<Match3Piece> affected)
         {
-            for (int column = centerColumn - 2; column <= centerColumn + 2; column++)
+            if (kind == Match3BonusKind.RocketHorizontal)
+                AddRow(row, affected);
+            else if (kind == Match3BonusKind.RocketVertical)
+                AddColumn(column, affected);
+            else if (kind == Match3BonusKind.Bomb)
+                AddBombArea(column, row, affected, 2);
+            else if (kind == Match3BonusKind.Plane)
+                AddPlaneArea(column, row, affected);
+        }
+
+        private void AddRow(
+            int row,
+            HashSet<Match3Piece> affected)
+        {
+            if (row < 0 || row >= height)
+                return;
+
+            for (int column = 0; column < width; column++)
             {
-                for (int row = centerRow - 2; row <= centerRow + 2; row++)
+                if (pieces[column, row] != null)
+                    affected.Add(pieces[column, row]);
+            }
+        }
+
+        private void AddColumn(
+            int column,
+            HashSet<Match3Piece> affected)
+        {
+            if (column < 0 || column >= width)
+                return;
+
+            for (int row = 0; row < height; row++)
+            {
+                if (pieces[column, row] != null)
+                    affected.Add(pieces[column, row]);
+            }
+        }
+
+        private void AddTripleCross(
+            int centerColumn,
+            int centerRow,
+            HashSet<Match3Piece> affected)
+        {
+            for (int offset = -1; offset <= 1; offset++)
+            {
+                AddRow(centerRow + offset, affected);
+                AddColumn(centerColumn + offset, affected);
+            }
+        }
+
+        private void AddBombArea(
+            int centerColumn,
+            int centerRow,
+            HashSet<Match3Piece> affected,
+            int radius)
+        {
+            for (int column = centerColumn - radius;
+                 column <= centerColumn + radius;
+                 column++)
+            {
+                for (int row = centerRow - radius;
+                     row <= centerRow + radius;
+                     row++)
                 {
-                    if (IsInside(column, row) && pieces[column, row] != null)
+                    if (IsInside(column, row) &&
+                        pieces[column, row] != null)
                         affected.Add(pieces[column, row]);
                 }
             }
         }
 
-        private void AddPlaneArea(int centerColumn, int centerRow, HashSet<Match3Piece> affected)
+        private void AddPlaneTakeoff(
+            int centerColumn,
+            int centerRow,
+            HashSet<Match3Piece> affected)
         {
             int[,] offsets =
             {
-                { 0, 0 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }
+                { 0, 0 },
+                { 1, 0 },
+                { -1, 0 },
+                { 0, 1 },
+                { 0, -1 }
             };
 
             for (int i = 0; i < offsets.GetLength(0); i++)
@@ -764,36 +1034,83 @@ namespace LostAndFound.Match3
                 int column = centerColumn + offsets[i, 0];
                 int row = centerRow + offsets[i, 1];
 
-                if (IsInside(column, row) && pieces[column, row] != null)
+                if (IsInside(column, row) &&
+                    pieces[column, row] != null)
                     affected.Add(pieces[column, row]);
             }
+        }
 
-            Match3Piece target = FindPlaneTarget(centerColumn, centerRow);
+        private void AddPlaneArea(
+            int centerColumn,
+            int centerRow,
+            HashSet<Match3Piece> affected)
+        {
+            AddPlaneTakeoff(centerColumn, centerRow, affected);
+
+            Match3Piece target =
+                FindPlaneTarget(centerColumn, centerRow);
+
             if (target != null)
                 affected.Add(target);
         }
 
-        private Match3Piece FindPlaneTarget(int excludedColumn, int excludedRow)
+        private Match3Piece FindPlaneTarget(
+            int excludedColumn,
+            int excludedRow)
         {
-            Match3Piece fallback = null;
+            List<Match3Piece> targets =
+                FindPlaneTargets(
+                    1,
+                    excludedColumn,
+                    excludedRow);
 
-            for (int row = 0; row < height; row++)
+            return targets.Count > 0
+                ? targets[0]
+                : null;
+        }
+
+        private List<Match3Piece> FindPlaneTargets(
+            int count,
+            int excludedColumn,
+            int excludedRow)
+        {
+            List<Match3Piece> result = new List<Match3Piece>();
+            HashSet<Match3Piece> used = new HashSet<Match3Piece>();
+
+            // First priority: current level goal pieces.
+            for (int pass = 0; pass < 2 && result.Count < count; pass++)
             {
-                for (int column = 0; column < width; column++)
+                for (int row = 0;
+                     row < height && result.Count < count;
+                     row++)
                 {
-                    Match3Piece piece = pieces[column, row];
-                    if (piece == null || (column == excludedColumn && row == excludedRow))
-                        continue;
+                    for (int column = 0;
+                         column < width && result.Count < count;
+                         column++)
+                    {
+                        Match3Piece piece = pieces[column, row];
 
-                    if (fallback == null)
-                        fallback = piece;
+                        if (piece == null ||
+                            (column == excludedColumn &&
+                             row == excludedRow) ||
+                            used.Contains(piece))
+                            continue;
 
-                    if (!piece.IsBonus && piece.Type == targetType)
-                        return piece;
+                        bool goalPiece =
+                            !piece.IsBonus &&
+                            piece.Type == targetType;
+
+                        if ((pass == 0 && !goalPiece) ||
+                            (pass == 1 && goalPiece))
+                            continue;
+
+                        used.Add(piece);
+                        result.Add(piece);
+                    }
                 }
             }
 
-            return fallback;
+            return result;
         }
 
         private int FindMostCommonType()
@@ -805,12 +1122,17 @@ namespace LostAndFound.Match3
                 for (int column = 0; column < width; column++)
                 {
                     Match3Piece piece = pieces[column, row];
-                    if (piece != null && !piece.IsBonus && piece.Type >= 0 && piece.Type < counts.Length)
+
+                    if (piece != null &&
+                        !piece.IsBonus &&
+                        piece.Type >= 0 &&
+                        piece.Type < counts.Length)
                         counts[piece.Type]++;
                 }
             }
 
             int bestType = 0;
+
             for (int i = 1; i < counts.Length; i++)
             {
                 if (counts[i] > counts[bestType])
@@ -820,55 +1142,120 @@ namespace LostAndFound.Match3
             return bestType;
         }
 
-        private void AddAllOfType(int type, HashSet<Match3Piece> affected)
+        private List<Match3Piece> TransformPiecesOfTypeToBonus(
+            int type,
+            Match3BonusKind kind)
+        {
+            List<Match3Piece> transformed =
+                new List<Match3Piece>();
+
+            for (int row = 0; row < height; row++)
+            {
+                for (int column = 0; column < width; column++)
+                {
+                    Match3Piece piece = pieces[column, row];
+
+                    if (piece == null ||
+                        piece.IsBonus ||
+                        piece.Type != type)
+                        continue;
+
+                    Match3BonusKind actualKind = kind;
+
+                    if (IsRocket(kind))
+                    {
+                        actualKind =
+                            (column + row) % 2 == 0
+                                ? Match3BonusKind.RocketHorizontal
+                                : Match3BonusKind.RocketVertical;
+                    }
+
+                    piece.SetBonus(
+                        actualKind,
+                        GetBonusSprite(actualKind),
+                        cellSize * 0.90f);
+
+                    transformed.Add(piece);
+                }
+            }
+
+            return transformed;
+        }
+
+        private void AddAllOfType(
+            int type,
+            HashSet<Match3Piece> affected)
         {
             for (int row = 0; row < height; row++)
             {
                 for (int column = 0; column < width; column++)
                 {
                     Match3Piece piece = pieces[column, row];
-                    if (piece != null && !piece.IsBonus && piece.Type == type)
+
+                    if (piece != null &&
+                        !piece.IsBonus &&
+                        piece.Type == type)
                         affected.Add(piece);
                 }
             }
         }
 
-        private void ExpandChainedBonuses(HashSet<Match3Piece> affected)
+        private void AddAllPieces(
+            HashSet<Match3Piece> affected)
+        {
+            for (int row = 0; row < height; row++)
+            {
+                for (int column = 0; column < width; column++)
+                {
+                    if (pieces[column, row] != null)
+                        affected.Add(pieces[column, row]);
+                }
+            }
+        }
+
+        private void ExpandChainedBonuses(
+            HashSet<Match3Piece> affected,
+            HashSet<Match3Piece> ignored = null)
         {
             Queue<Match3Piece> queue = new Queue<Match3Piece>();
-            HashSet<Match3Piece> expanded = new HashSet<Match3Piece>();
+            HashSet<Match3Piece> expanded =
+                new HashSet<Match3Piece>();
 
             foreach (Match3Piece piece in affected)
             {
-                if (piece != null && piece.IsBonus)
+                if (piece != null &&
+                    piece.IsBonus &&
+                    (ignored == null || !ignored.Contains(piece)))
                     queue.Enqueue(piece);
             }
 
             while (queue.Count > 0)
             {
                 Match3Piece bonus = queue.Dequeue();
-                if (bonus == null || expanded.Contains(bonus))
+
+                if (bonus == null ||
+                    expanded.Contains(bonus) ||
+                    (ignored != null && ignored.Contains(bonus)))
                     continue;
 
                 expanded.Add(bonus);
-                HashSet<Match3Piece> extra = new HashSet<Match3Piece> { bonus };
 
-                switch (bonus.BonusKind)
-                {
-                    case Match3BonusKind.Bomb:
-                        AddBombArea(bonus.Column, bonus.Row, extra);
-                        break;
-                    case Match3BonusKind.Plane:
-                        AddPlaneArea(bonus.Column, bonus.Row, extra);
-                        break;
-                    case Match3BonusKind.ColorClear:
-                        AddAllOfType(FindMostCommonType(), extra);
-                        break;
-                }
+                HashSet<Match3Piece> extra =
+                    new HashSet<Match3Piece> { bonus };
+
+                AddRawBonusEffect(bonus, -1, extra);
 
                 foreach (Match3Piece piece in extra)
                 {
-                    if (piece != null && affected.Add(piece) && piece.IsBonus)
+                    if (piece == null)
+                        continue;
+
+                    bool wasNew = affected.Add(piece);
+
+                    if (wasNew &&
+                        piece.IsBonus &&
+                        (ignored == null ||
+                         !ignored.Contains(piece)))
                         queue.Enqueue(piece);
                 }
             }
