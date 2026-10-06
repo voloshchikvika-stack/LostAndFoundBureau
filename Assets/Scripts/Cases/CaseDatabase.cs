@@ -79,6 +79,7 @@ namespace LostAndFound.Cases
                         targetCount: 14,
                         bombsEnabled: true,
                         planesEnabled: true,
+                        rocketsEnabled: true,
                         colorClearEnabled: true)
                 },
                 answerOptions: new[]
@@ -143,7 +144,7 @@ namespace LostAndFound.Cases
                 levels: new[]
                 {
                     new Match3LevelDefinition(moves: 20, targetType: 2, targetCount: 14,
-                        bombsEnabled: true, planesEnabled: true, colorClearEnabled: true)
+                        bombsEnabled: true, planesEnabled: true, rocketsEnabled: true, colorClearEnabled: true)
                 },
                 answerOptions: new[]
                 {
@@ -206,7 +207,7 @@ namespace LostAndFound.Cases
                 levels: new[]
                 {
                     new Match3LevelDefinition(moves: 22, targetType: 3, targetCount: 15,
-                        bombsEnabled: true, planesEnabled: true, colorClearEnabled: true)
+                        bombsEnabled: true, planesEnabled: true, rocketsEnabled: true, colorClearEnabled: true)
                 },
                 answerOptions: new[]
                 {
@@ -475,6 +476,7 @@ namespace LostAndFound.Cases
                             targetCount: 14 + index % 5 + difficulty,
                             bombsEnabled: true,
                             planesEnabled: true,
+                            rocketsEnabled: true,
                             colorClearEnabled: true)
                     }
                     : new[] { firstLevel };
