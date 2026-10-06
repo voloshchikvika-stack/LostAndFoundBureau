@@ -228,6 +228,183 @@ namespace LostAndFound.Cases
             return texture;
         }
 
+        private void LoadPuzzleVisuals()
+        {
+            for (int i = 0; i < photoEvidenceImages.Length; i++)
+            {
+                Texture2D oldTexture = photoEvidenceImages[i];
+                if (oldTexture != null &&
+                    oldTexture.name.StartsWith("GeneratedEvidence_"))
+                    Destroy(oldTexture);
+            }
+
+            if (currentCase == null ||
+                currentCase.RoomId != "PhotoLab" ||
+                currentCase.MiniGameCards == null)
+            {
+                photoEvidenceImages = new Texture2D[0];
+                return;
+            }
+
+            photoEvidenceImages =
+                new Texture2D[currentCase.MiniGameCards.Length];
+
+            for (int i = 0; i < photoEvidenceImages.Length; i++)
+            {
+                Texture2D image = Resources.Load<Texture2D>(
+                    $"Cases/{currentCase.Id}/Photo{i + 1:00}");
+
+                photoEvidenceImages[i] =
+                    image != null ? image : MakePhotoEvidenceTexture(i);
+            }
+        }
+
+        private Texture2D MakePhotoEvidenceTexture(int index)
+        {
+            const int width = 420;
+            const int height = 260;
+            Texture2D texture = new Texture2D(
+                width, height, TextureFormat.RGBA32, false);
+            texture.name = $"GeneratedEvidence_{index}";
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+
+            Color sky = index % 3 == 0
+                ? new Color(0.78f, 0.70f, 0.57f)
+                : index % 3 == 1
+                    ? new Color(0.52f, 0.64f, 0.67f)
+                    : new Color(0.69f, 0.61f, 0.51f);
+
+            Color wall = new Color(0.86f, 0.79f, 0.66f);
+            Color dark = new Color(0.25f, 0.18f, 0.14f);
+            Color accent = new Color(0.49f, 0.29f, 0.19f);
+            Color glass = new Color(0.68f, 0.82f, 0.85f);
+            Color light = new Color(0.95f, 0.89f, 0.76f);
+
+            for (int y = 0; y < height; y++)
+            {
+                float t = y / (float)(height - 1);
+                Color row = Color.Lerp(wall, sky, t * 0.45f);
+
+                for (int x = 0; x < width; x++)
+                    texture.SetPixel(x, y, row);
+            }
+
+            if (index % 3 == 0)
+            {
+                // Café: window, table, cup and a camera hanging from a strap.
+                PaintRect(texture, 24, 105, 150, 126, glass);
+                PaintRect(texture, 28, 109, 5, 118, dark);
+                PaintRect(texture, 94, 109, 5, 118, dark);
+                PaintRect(texture, 160, 109, 5, 118, dark);
+                PaintRect(texture, 0, 42, width, 38, accent);
+                PaintCircle(texture, 300, 142, 35, new Color(0.38f, 0.27f, 0.20f));
+                PaintRect(texture, 267, 76, 66, 67, new Color(0.32f, 0.22f, 0.17f));
+                PaintLine(texture, 266, 174, 329, 83, 7, dark);
+                PaintRect(texture, 186, 76, 38, 34, light);
+                PaintCircle(texture, 224, 92, 12, light);
+            }
+            else if (index % 3 == 1)
+            {
+                // Tram: doors, windows and a taut diagonal camera strap.
+                PaintRect(texture, 15, 62, 390, 168, new Color(0.72f, 0.70f, 0.61f));
+                PaintRect(texture, 44, 128, 91, 78, glass);
+                PaintRect(texture, 164, 128, 91, 78, glass);
+                PaintRect(texture, 285, 128, 91, 78, glass);
+                PaintRect(texture, 207, 42, 8, 188, dark);
+                PaintRect(texture, 0, 39, width, 18, accent);
+                PaintCircle(texture, 109, 91, 28, new Color(0.40f, 0.28f, 0.22f));
+                PaintLine(texture, 116, 116, 296, 197, 8, dark);
+                PaintRect(texture, 273, 174, 55, 40, new Color(0.23f, 0.19f, 0.17f));
+                PaintCircle(texture, 300, 194, 11, new Color(0.10f, 0.10f, 0.10f));
+            }
+            else
+            {
+                // Photo lab: counter, film trays and an obviously empty case.
+                PaintRect(texture, 0, 45, width, 48, accent);
+                PaintRect(texture, 45, 116, 125, 75, new Color(0.33f, 0.25f, 0.20f));
+                PaintRect(texture, 235, 112, 128, 70, new Color(0.72f, 0.62f, 0.49f));
+                PaintRect(texture, 258, 132, 83, 39, dark);
+                PaintRect(texture, 267, 140, 65, 22, new Color(0.90f, 0.80f, 0.63f));
+                PaintRect(texture, 77, 186, 60, 38, new Color(0.20f, 0.17f, 0.15f));
+                PaintCircle(texture, 107, 205, 15, new Color(0.05f, 0.05f, 0.05f));
+                PaintRect(texture, 188, 96, 18, 133, dark);
+            }
+
+            texture.Apply();
+            return texture;
+        }
+
+        private static void PaintRect(
+            Texture2D texture,
+            int x,
+            int y,
+            int width,
+            int height,
+            Color color)
+        {
+            int maxX = Mathf.Min(texture.width, x + width);
+            int maxY = Mathf.Min(texture.height, y + height);
+
+            for (int py = Mathf.Max(0, y); py < maxY; py++)
+                for (int px = Mathf.Max(0, x); px < maxX; px++)
+                    texture.SetPixel(px, py, color);
+        }
+
+        private static void PaintCircle(
+            Texture2D texture,
+            int centerX,
+            int centerY,
+            int radius,
+            Color color)
+        {
+            int radiusSquared = radius * radius;
+
+            for (int y = -radius; y <= radius; y++)
+            {
+                for (int x = -radius; x <= radius; x++)
+                {
+                    if (x * x + y * y > radiusSquared)
+                        continue;
+
+                    int px = centerX + x;
+                    int py = centerY + y;
+
+                    if (px >= 0 && px < texture.width &&
+                        py >= 0 && py < texture.height)
+                        texture.SetPixel(px, py, color);
+                }
+            }
+        }
+
+        private static void PaintLine(
+            Texture2D texture,
+            int x0,
+            int y0,
+            int x1,
+            int y1,
+            int thickness,
+            Color color)
+        {
+            int steps = Mathf.Max(
+                Mathf.Abs(x1 - x0),
+                Mathf.Abs(y1 - y0));
+
+            for (int i = 0; i <= steps; i++)
+            {
+                float t = steps == 0 ? 0f : i / (float)steps;
+                int x = Mathf.RoundToInt(Mathf.Lerp(x0, x1, t));
+                int y = Mathf.RoundToInt(Mathf.Lerp(y0, y1, t));
+                PaintRect(
+                    texture,
+                    x - thickness / 2,
+                    y - thickness / 2,
+                    thickness,
+                    thickness,
+                    color);
+            }
+        }
+
         private Texture2D MakeTornPaperTexture(Color paperColor)
         {
             const int textureWidth = 240;
