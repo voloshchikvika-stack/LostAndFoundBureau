@@ -1863,6 +1863,285 @@ namespace LostAndFound.Cases
             return result;
         }
 
+        private void DrawMechanismPuzzle(
+            float scale,
+            GUIStyle button,
+            GUIStyle body)
+        {
+            Color ink = new Color(0.30f, 0.19f, 0.12f);
+            Color lightInk = new Color(0.92f, 0.84f, 0.68f);
+            Color mutedInk = new Color(0.52f, 0.40f, 0.28f);
+
+            GUIStyle title = LabelStyle(
+                18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, lightInk);
+            GUIStyle label = LabelStyle(
+                15, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle small = LabelStyle(
+                14, FontStyle.Normal, TextAnchor.MiddleCenter, scale, mutedInk);
+            small.wordWrap = true;
+            GUIStyle feedback = LabelStyle(
+                14, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            feedback.wordWrap = true;
+
+            // Dark brass mechanism plate.
+            DrawNineSlice(
+                R(455, 520, 1010, 248, scale),
+                mechanismPlateTexture,
+                20);
+
+            GUI.Label(
+                R(515, 535, 890, 32, scale),
+                "ВНУТРЕННИЙ МЕХАНИЗМ ШКАТУЛКИ",
+                title);
+
+            // Connection rails make the three axles read as one mechanism.
+            GUI.DrawTexture(
+                R(650, 659, 620, 8, scale),
+                accentTexture,
+                ScaleMode.StretchToFill,
+                true);
+
+            float[] centersX = { 705f, 960f, 1215f };
+            float centerY = 660f;
+            float[] axleSizes = { 128f, 108f, 92f };
+            string[] axleLabels = { "I", "II", "III" };
+
+            for (int slot = 0; slot < mechanismSlots.Length; slot++)
+            {
+                float axleSize = axleSizes[slot];
+                Rect axle = R(
+                    centersX[slot] - axleSize * 0.5f,
+                    centerY - axleSize * 0.5f,
+                    axleSize,
+                    axleSize,
+                    scale);
+
+                GUI.DrawTexture(
+                    axle,
+                    mechanismSlotTexture,
+                    ScaleMode.StretchToFill,
+                    true);
+
+                GUI.Label(
+                    R(
+                        centersX[slot] - 30f,
+                        centerY - 18f,
+                        60f,
+                        36f,
+                        scale),
+                    axleLabels[slot],
+                    title);
+
+                int gearIndex = mechanismSlots[slot];
+
+                if (gearIndex >= 0 &&
+                    gearIndex < mechanismGearTextures.Length)
+                {
+                    float gearSize = MechanismGearSize(gearIndex);
+                    Rect gearRect = R(
+                        centersX[slot] - gearSize * 0.5f,
+                        centerY - gearSize * 0.5f,
+                        gearSize,
+                        gearSize,
+                        scale);
+
+                    GUI.DrawTexture(
+                        gearRect,
+                        mechanismGearTextures[gearIndex],
+                        ScaleMode.ScaleToFit,
+                        true);
+                }
+
+                Rect clickArea = R(
+                    centersX[slot] - 86f,
+                    centerY - 86f,
+                    172f,
+                    172f,
+                    scale);
+
+                if (GUI.Button(
+                    clickArea,
+                    GUIContent.none,
+                    GUIStyle.none))
+                {
+                    if (selectedMechanismGear >= 0)
+                    {
+                        RemoveMechanismGear(selectedMechanismGear);
+                        mechanismSlots[slot] = selectedMechanismGear;
+                        miniGameFeedback =
+                            "Шестерёнка установлена. Можно выбрать следующую.";
+                        selectedMechanismGear = -1;
+                    }
+                    else if (mechanismSlots[slot] >= 0)
+                    {
+                        int removed = mechanismSlots[slot];
+                        mechanismSlots[slot] = -1;
+                        selectedMechanismGear = removed;
+                        miniGameFeedback =
+                            "Шестерёнка снята. Выберите другую ось или верните её на стол.";
+                    }
+                    else
+                    {
+                        miniGameFeedback =
+                            "Сначала выберите шестерёнку на рабочем столе.";
+                    }
+                }
+            }
+
+            GUI.Label(
+                R(500, 738, 920, 28, scale),
+                selectedMechanismGear >= 0
+                    ? "ВЫБРАНА: " + MechanismGearShortName(selectedMechanismGear) +
+                      " · НАЖМИТЕ НА НУЖНУЮ ОСЬ"
+                    : "ВЫБЕРИТЕ ШЕСТЕРЁНКУ НА СТОЛЕ",
+                small);
+
+            // Workbench tray.
+            DrawNineSlice(
+                R(430, 774, 1060, 113, scale),
+                speechBubbleTexture,
+                18);
+
+            float[] trayX = { 470f, 720f, 970f, 1220f };
+
+            for (int i = 0; i < mechanismGearTextures.Length; i++)
+            {
+                bool placed = IsMechanismGearPlaced(i);
+                bool selected = selectedMechanismGear == i;
+
+                Rect card = R(trayX[i], 790, 210, 82, scale);
+
+                if (selected)
+                    DrawNineSlice(card, folderPaperTexture, 16);
+
+                float iconSize = i == 0 ? 68f :
+                                 i == 1 ? 62f :
+                                 i == 2 ? 56f : 62f;
+
+                GUI.DrawTexture(
+                    R(trayX[i] + 9f, 797f, iconSize, iconSize, scale),
+                    mechanismGearTextures[i],
+                    ScaleMode.ScaleToFit,
+                    true);
+
+                GUI.Label(
+                    R(trayX[i] + 76f, 798f, 125f, 62f, scale),
+                    placed
+                        ? "УСТАНОВЛЕНА"
+                        : MechanismGearShortName(i),
+                    label);
+
+                GUI.enabled = !placed;
+
+                if (GUI.Button(
+                    card,
+                    GUIContent.none,
+                    GUIStyle.none))
+                {
+                    selectedMechanismGear =
+                        selectedMechanismGear == i ? -1 : i;
+
+                    miniGameFeedback =
+                        selectedMechanismGear >= 0
+                            ? "Теперь нажмите на одну из трёх осей механизма."
+                            : "";
+                }
+
+                GUI.enabled = true;
+            }
+
+            bool allInstalled = true;
+            for (int i = 0; i < mechanismSlots.Length; i++)
+                allInstalled &= mechanismSlots[i] >= 0;
+
+            GUI.enabled = allInstalled;
+
+            if (GUI.Button(
+                R(475, 895, 330, 43, scale),
+                "ПРОВЕРИТЬ МЕХАНИЗМ",
+                button))
+            {
+                if (IsMechanismCorrect())
+                {
+                    miniGameFeedback = currentCase.MiniGameResult;
+                    CaseSession.CompleteMiniGame();
+                }
+                else
+                {
+                    miniGameFeedback =
+                        "Механизм заклинило. Одна из шестерёнок лишняя или стоит не на своей оси.";
+                }
+            }
+
+            GUI.enabled = true;
+
+            GUI.Label(
+                R(835, 892, 590, 48, scale),
+                string.IsNullOrEmpty(miniGameFeedback)
+                    ? "Три исправные шестерёнки должны соединиться от большой к маленькой."
+                    : miniGameFeedback,
+                feedback);
+        }
+
+        private float MechanismGearSize(int gearIndex)
+        {
+            switch (gearIndex)
+            {
+                case 0: return 166f;
+                case 1: return 142f;
+                case 2: return 118f;
+                default: return 142f;
+            }
+        }
+
+        private string MechanismGearShortName(int gearIndex)
+        {
+            switch (gearIndex)
+            {
+                case 0: return "БОЛЬШАЯ";
+                case 1: return "СРЕДНЯЯ";
+                case 2: return "МАЛАЯ";
+                case 3: return "ТРЕСНУВШАЯ";
+                default: return "ШЕСТЕРЁНКА";
+            }
+        }
+
+        private bool IsMechanismGearPlaced(int gearIndex)
+        {
+            for (int i = 0; i < mechanismSlots.Length; i++)
+            {
+                if (mechanismSlots[i] == gearIndex)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void RemoveMechanismGear(int gearIndex)
+        {
+            for (int i = 0; i < mechanismSlots.Length; i++)
+            {
+                if (mechanismSlots[i] == gearIndex)
+                    mechanismSlots[i] = -1;
+            }
+        }
+
+        private bool IsMechanismCorrect()
+        {
+            if (currentCase == null ||
+                currentCase.MiniGameCorrectOrder == null ||
+                currentCase.MiniGameCorrectOrder.Length != mechanismSlots.Length)
+                return false;
+
+            for (int i = 0; i < mechanismSlots.Length; i++)
+            {
+                if (mechanismSlots[i] != currentCase.MiniGameCorrectOrder[i])
+                    return false;
+            }
+
+            return true;
+        }
+
         private static bool IsChoicePuzzle(string mode)
         {
             return mode == "Spot" || mode == "Compare" || mode == "Focus" ||
