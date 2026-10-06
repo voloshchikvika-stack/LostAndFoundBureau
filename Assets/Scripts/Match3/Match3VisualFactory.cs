@@ -51,6 +51,8 @@ namespace LostAndFound.Match3
         {
             Color background = kind switch
             {
+                Match3BonusKind.RocketHorizontal => new Color(0.88f, 0.29f, 0.36f),
+                Match3BonusKind.RocketVertical => new Color(0.88f, 0.29f, 0.36f),
                 Match3BonusKind.Plane => new Color(0.32f, 0.72f, 0.95f),
                 Match3BonusKind.Bomb => new Color(0.96f, 0.43f, 0.26f),
                 Match3BonusKind.ColorClear => new Color(0.48f, 0.34f, 0.68f),
@@ -88,6 +90,12 @@ namespace LostAndFound.Match3
 
             switch (kind)
             {
+                case Match3BonusKind.RocketHorizontal:
+                    DrawRocket(texture, true, new Color(1f, 0.96f, 0.84f, 1f));
+                    break;
+                case Match3BonusKind.RocketVertical:
+                    DrawRocket(texture, false, new Color(1f, 0.96f, 0.84f, 1f));
+                    break;
                 case Match3BonusKind.Plane:
                     DrawPlane(texture, new Color(1f, 0.97f, 0.88f, 1f));
                     break;
@@ -106,6 +114,28 @@ namespace LostAndFound.Match3
                 new Rect(0f, 0f, TokenSize, TokenSize),
                 new Vector2(0.5f, 0.5f),
                 TokenSize);
+        }
+
+        private static void DrawRocket(Texture2D t, bool horizontal, Color c)
+        {
+            if (horizontal)
+            {
+                DrawLine(t, 22, 48, 72, 48, 14, c);
+                DrawLine(t, 68, 48, 78, 58, 8, c);
+                DrawLine(t, 68, 48, 78, 38, 8, c);
+                DrawLine(t, 24, 48, 15, 58, 7, new Color(1f, 0.72f, 0.20f, 1f));
+                DrawLine(t, 24, 48, 15, 38, 7, new Color(1f, 0.72f, 0.20f, 1f));
+            }
+            else
+            {
+                DrawLine(t, 48, 22, 48, 72, 14, c);
+                DrawLine(t, 48, 68, 58, 78, 8, c);
+                DrawLine(t, 48, 68, 38, 78, 8, c);
+                DrawLine(t, 48, 24, 58, 15, 7, new Color(1f, 0.72f, 0.20f, 1f));
+                DrawLine(t, 48, 24, 38, 15, 7, new Color(1f, 0.72f, 0.20f, 1f));
+            }
+
+            FillCircle(t, 48, 48, 7, new Color(0.92f, 0.22f, 0.28f, 1f));
         }
 
         private static void DrawPlane(Texture2D t, Color c)
