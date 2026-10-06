@@ -1792,25 +1792,161 @@ namespace LostAndFound.Cases
             return mode == "Assembly" || mode == "Restore";
         }
 
-        private void DrawPhotoPuzzle(float scale, GUIStyle button, GUIStyle body)
+        private void DrawPhotoPuzzle(
+            float scale,
+            GUIStyle button,
+            GUIStyle body)
         {
-            for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
+            Color ink = new Color(0.30f, 0.19f, 0.12f);
+            Color faded = new Color(0.49f, 0.37f, 0.27f);
+            GUIStyle cardTitle = LabelStyle(
+                18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle cardHint = LabelStyle(
+                14, FontStyle.Normal, TextAnchor.MiddleCenter, scale, faded);
+            cardHint.wordWrap = true;
+
+            if (enlargedPhotoIndex >= 0 &&
+                enlargedPhotoIndex < currentCase.MiniGameCards.Length)
             {
-                if (GUI.Button(R(470, 555 + i * 100, 980, 82, scale),
-                    currentCase.MiniGameCards[i], button))
+                DrawNineSlice(
+                    R(470, 505, 980, 405, scale),
+                    speechBubbleTexture,
+                    22);
+
+                Texture2D image = enlargedPhotoIndex < photoEvidenceImages.Length
+                    ? photoEvidenceImages[enlargedPhotoIndex]
+                    : null;
+
+                if (image != null)
                 {
-                    if (i == currentCase.MiniGameCorrectOrder[0])
+                    GUI.DrawTexture(
+                        R(515, 535, 625, 315, scale),
+                        image,
+                        ScaleMode.ScaleAndCrop,
+                        true);
+                }
+
+                GUI.Label(
+                    R(1170, 545, 235, 45, scale),
+                    $"КАДР {(char)('А' + enlargedPhotoIndex)}",
+                    cardTitle);
+
+                GUI.Label(
+                    R(1160, 603, 250, 128, scale),
+                    GetPhotoCardCaption(enlargedPhotoIndex),
+                    cardHint);
+
+                if (GUI.Button(
+                    R(1165, 751, 240, 58, scale),
+                    "ВЫБРАТЬ КАДР",
+                    button))
+                {
+                    int selected = enlargedPhotoIndex;
+                    enlargedPhotoIndex = -1;
+
+                    if (selected == currentCase.MiniGameCorrectOrder[0])
                     {
                         CaseSession.CompleteMiniGame();
                         miniGameFeedback = currentCase.MiniGameResult;
                     }
                     else
-                        miniGameFeedback = "Этот кадр не объясняет обрыв ремешка. " +
-                            "Поищите снимок, где виден момент потери.";
+                    {
+                        miniGameFeedback =
+                            "Этот кадр показывает часть маршрута, но не момент, " +
+                            "который объясняет пропажу. Изучите остальные снимки.";
+                    }
                 }
+
+                if (GUI.Button(
+                    R(1165, 821, 240, 48, scale),
+                    "← КО ВСЕМ КАДРАМ",
+                    button))
+                    enlargedPhotoIndex = -1;
+
+                return;
             }
 
-            GUI.Label(R(510, 860, 900, 52, scale), miniGameFeedback, body);
+            GUI.Label(
+                R(510, 510, 900, 36, scale),
+                "Нажмите на фотографию, чтобы рассмотреть её крупнее.",
+                cardHint);
+
+            for (int i = 0; i < currentCase.MiniGameCards.Length; i++)
+            {
+                float x = 405f + i * 370f;
+                Rect card = R(x, 556, 340, 255, scale);
+                Rect photo = R(x + 14, 570, 312, 178, scale);
+
+                GUI.DrawTexture(
+                    card,
+                    paperTexture,
+                    ScaleMode.StretchToFill,
+                    true);
+
+                Texture2D image = i < photoEvidenceImages.Length
+                    ? photoEvidenceImages[i]
+                    : null;
+
+                if (image != null)
+                    GUI.DrawTexture(photo, image, ScaleMode.ScaleAndCrop, true);
+
+                GUI.Label(
+                    R(x + 18, 754, 304, 30, scale),
+                    $"КАДР {(char)('А' + i)}",
+                    cardTitle);
+
+                GUI.Label(
+                    R(x + 18, 782, 304, 24, scale),
+                    GetPhotoCardShortLabel(i),
+                    cardHint);
+
+                if (GUI.Button(
+                    card,
+                    GUIContent.none,
+                    GUIStyle.none))
+                    enlargedPhotoIndex = i;
+            }
+
+            GUI.Label(
+                R(510, 830, 900, 72, scale),
+                string.IsNullOrEmpty(miniGameFeedback)
+                    ? "Сначала изучите кадры. Выбор делается только после увеличения фотографии."
+                    : miniGameFeedback,
+                body);
+        }
+
+        private string GetPhotoCardShortLabel(int index)
+        {
+            if (currentCase != null && currentCase.Id == "Case02")
+            {
+                string[] labels =
+                {
+                    "КОФЕЙНЯ · 17:08",
+                    "ТРАМВАЙ №6 · 17:19",
+                    "ФОТОЛАБОРАТОРИЯ · 17:31"
+                };
+
+                if (index >= 0 && index < labels.Length)
+                    return labels[index];
+            }
+
+            return $"МАТЕРИАЛ {index + 1}";
+        }
+
+        private string GetPhotoCardCaption(int index)
+        {
+            if (currentCase == null ||
+                currentCase.MiniGameCards == null ||
+                index < 0 ||
+                index >= currentCase.MiniGameCards.Length)
+                return "";
+
+            string text = currentCase.MiniGameCards[index];
+            int divider = text.IndexOf('—');
+
+            return divider >= 0 && divider + 1 < text.Length
+                ? text.Substring(divider + 1).Trim()
+                : text;
         }
 
         private void DrawMatchingEvidencePuzzle(
