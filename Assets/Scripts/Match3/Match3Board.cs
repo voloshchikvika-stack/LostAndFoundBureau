@@ -351,7 +351,10 @@ namespace LostAndFound.Match3
 
             if (clicked == selectedPiece)
             {
-                if (clicked.IsBonus)
+                // Rainbow Ball follows Homescapes-style input: it must be
+                // swapped with a neighboring regular piece or another power-up.
+                if (clicked.IsBonus &&
+                    clicked.BonusKind != Match3BonusKind.ColorClear)
                 {
                     StartCoroutine(ActivateStandaloneBonus(clicked));
                     return;
