@@ -1091,6 +1091,7 @@ namespace LostAndFound.Match3
                         Match3Piece piece = pieces[column, row];
 
                         if (piece == null ||
+                            piece.IsBonus ||
                             (column == excludedColumn &&
                              row == excludedRow) ||
                             used.Contains(piece))
@@ -1367,7 +1368,7 @@ namespace LostAndFound.Match3
                 while (runStart < width)
                 {
                     Match3Piece startPiece = pieces[runStart, row];
-                    if (startPiece == null)
+                    if (startPiece == null || startPiece.IsBonus)
                     {
                         runStart++;
                         continue;
@@ -1376,6 +1377,7 @@ namespace LostAndFound.Match3
                     int runEnd = runStart + 1;
                     while (runEnd < width &&
                            pieces[runEnd, row] != null &&
+                           !pieces[runEnd, row].IsBonus &&
                            pieces[runEnd, row].Type == startPiece.Type)
                     {
                         runEnd++;
@@ -1398,7 +1400,7 @@ namespace LostAndFound.Match3
                 while (runStart < height)
                 {
                     Match3Piece startPiece = pieces[column, runStart];
-                    if (startPiece == null)
+                    if (startPiece == null || startPiece.IsBonus)
                     {
                         runStart++;
                         continue;
@@ -1407,6 +1409,7 @@ namespace LostAndFound.Match3
                     int runEnd = runStart + 1;
                     while (runEnd < height &&
                            pieces[column, runEnd] != null &&
+                           !pieces[column, runEnd].IsBonus &&
                            pieces[column, runEnd].Type == startPiece.Type)
                     {
                         runEnd++;
