@@ -403,10 +403,21 @@ namespace LostAndFound.Match3
 
             bool firstWasBonus = first.IsBonus;
             bool secondWasBonus = second.IsBonus;
+            Match3BonusKind firstKind = first.BonusKind;
+            Match3BonusKind secondKind = second.BonusKind;
             int firstTypeBeforeSwap = first.Type;
             int secondTypeBeforeSwap = second.Type;
 
             yield return SwapAndAnimate(first, second, swapDuration);
+
+            if (firstWasBonus && secondWasBonus)
+            {
+                moves++;
+                yield return ResolveBonusCombination(
+                    first, second, firstKind, secondKind);
+                FinishMoveOrContinue();
+                yield break;
+            }
 
             if (firstWasBonus || secondWasBonus)
             {
@@ -436,7 +447,8 @@ namespace LostAndFound.Match3
 
             HashSet<Match3Piece> matches = FindAllMatches();
 
-            if (matches.Count == 0 && (planeSquare == null || planeSquare.Count == 0))
+            if (matches.Count == 0 &&
+                (planeSquare == null || planeSquare.Count == 0))
             {
                 yield return SwapAndAnimate(first, second, swapDuration);
                 inputLocked = false;
@@ -449,8 +461,17 @@ namespace LostAndFound.Match3
             Match3BonusKind bonusKind = Match3BonusKind.None;
             HashSet<Match3Piece> clearSet = matches;
 
-            Match3Piece colorHost = colorClearEnabled ? FindFiveLineHost(first, second) : null;
-            Match3Piece bombHost = bombsEnabled ? FindBombHost(first, second) : null;
+            Match3Piece colorHost = colorClearEnabled
+                ? FindFiveLineHost(first, second)
+                : null;
+            Match3Piece bombHost = bombsEnabled
+                ? FindBombHost(first, second)
+                : null;
+
+            Match3BonusKind rocketKind = Match3BonusKind.None;
+            Match3Piece rocketHost = null;
+            if (rocketsEnabled)
+                rocketHost = FindRocketHost(first, second, out rocketKind);
 
             if (colorHost != null)
             {
@@ -462,6 +483,11 @@ namespace LostAndFound.Match3
                 bonusHost = bombHost;
                 bonusKind = Match3BonusKind.Bomb;
             }
+            else if (rocketHost != null)
+            {
+                bonusHost = rocketHost;
+                bonusKind = rocketKind;
+            }
             else if (planeSquare != null && planeSquare.Count == 4)
             {
                 bonusHost = planeSquare.Contains(first) ? first : second;
@@ -472,7 +498,11 @@ namespace LostAndFound.Match3
             if (bonusHost != null && bonusKind != Match3BonusKind.None)
             {
                 ClearMatches(clearSet, bonusHost);
-                bonusHost.SetBonus(bonusKind, GetBonusSprite(bonusKind), cellSize * 0.90f);
+                bonusHost.SetBonus(
+                    bonusKind,
+                    GetBonusSprite(bonusKind),
+                    cellSize * 0.90f);
+
                 yield return new WaitForSeconds(clearDelay);
                 yield return CollapseColumns();
                 yield return RefillBoard();
