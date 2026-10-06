@@ -40,6 +40,8 @@ namespace LostAndFound.Cases
         private bool temporaryRoomAccess;
         private int[] assemblySlots = { -1, -1, -1 };
         private int selectedFragment = -1;
+        private int[] mechanismSlots = { -1, -1, -1 };
+        private int selectedMechanismGear = -1;
         private int draggedPuzzleItem = -1;
         private bool draggingPuzzleItem;
         private Vector2 puzzleDragOffset;
@@ -72,6 +74,9 @@ namespace LostAndFound.Cases
         private Texture2D tornPaperTexture;
         private Texture2D selectedTornPaperTexture;
         private Texture2D emptyReceiptSlotTexture;
+        private Texture2D mechanismPlateTexture;
+        private Texture2D mechanismSlotTexture;
+        private Texture2D[] mechanismGearTextures = new Texture2D[0];
         private Font uiFont;
 
         private bool cluePopupVisible;
@@ -184,6 +189,15 @@ namespace LostAndFound.Cases
             tornPaperTexture = MakeTornPaperTexture(new Color(0.98f, 0.95f, 0.85f));
             selectedTornPaperTexture = MakeTornPaperTexture(new Color(1f, 0.86f, 0.60f));
             emptyReceiptSlotTexture = MakeRoundedTexture(new Color(0.79f, 0.69f, 0.53f, 1f), 18);
+            mechanismPlateTexture = MakeRoundedTexture(new Color(0.31f, 0.23f, 0.17f, 0.98f), 20);
+            mechanismSlotTexture = MakeRoundedTexture(new Color(0.69f, 0.56f, 0.38f, 1f), 28);
+            mechanismGearTextures = new[]
+            {
+                MakeGearTexture(new Color(0.88f, 0.64f, 0.22f, 1f), 18, false),
+                MakeGearTexture(new Color(0.63f, 0.67f, 0.69f, 1f), 16, false),
+                MakeGearTexture(new Color(0.74f, 0.39f, 0.20f, 1f), 14, false),
+                MakeGearTexture(new Color(0.46f, 0.30f, 0.24f, 1f), 16, true)
+            };
 
             uiFont = Font.CreateDynamicFontFromOSFont(
                 new[] { "Segoe UI", "Arial" },
@@ -1620,6 +1634,8 @@ namespace LostAndFound.Cases
             draggedPuzzleItem = -1;
             draggingPuzzleItem = false;
             enlargedPhotoIndex = -1;
+            selectedMechanismGear = -1;
+            mechanismSlots = new[] { -1, -1, -1 };
             assemblySlots = new int[currentCase.MiniGameCards.Length];
 
             for (int i = 0; i < assemblySlots.Length; i++)
