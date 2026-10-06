@@ -6,6 +6,8 @@ namespace LostAndFound.Match3
     public enum Match3BonusKind
     {
         None,
+        RocketHorizontal,
+        RocketVertical,
         Plane,
         Bomb,
         ColorClear
