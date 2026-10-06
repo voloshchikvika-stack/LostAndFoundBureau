@@ -675,8 +675,10 @@ namespace LostAndFound.Match3
                 foreach (Match3Piece target in FindPlaneTargets(
                     3, centerColumn, centerRow))
                 {
+                    // The three planes fly to three different targets.
+                    // Neighbor clearing happens at takeoff, while each target
+                    // tile itself is removed on landing.
                     affected.Add(target);
-                    AddPlaneTakeoff(target.Column, target.Row, affected);
                 }
 
                 ExpandChainedBonuses(affected, comboPieces);
