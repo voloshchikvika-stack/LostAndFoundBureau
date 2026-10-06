@@ -1769,7 +1769,11 @@ namespace LostAndFound.Cases
                     miniGameFeedback = BuildEquipmentHint(availableEquipment);
             }
 
-            if (!solved && IsPairPuzzle(currentCase.MiniGameMode))
+            if (!solved && currentCase.MiniGameMode == "Mechanism")
+            {
+                DrawMechanismPuzzle(scale, button, body);
+            }
+            else if (!solved && IsPairPuzzle(currentCase.MiniGameMode))
             {
                 DrawMatchingEvidencePuzzle(scale, button, body);
             }
@@ -1806,6 +1810,16 @@ namespace LostAndFound.Cases
 
             int[] order = currentCase.MiniGameCorrectOrder;
             string[] cards = currentCase.MiniGameCards;
+
+            if (currentCase.MiniGameMode == "Mechanism")
+            {
+                if (tier == 1)
+                    return "Сломанная шестерёнка не подходит к рабочему механизму.";
+                if (tier == 2)
+                    return "Начните с самой большой шестерёнки слева, затем ставьте детали по уменьшению.";
+
+                return "Полная схема: большая латунная → средняя стальная → малая медная.";
+            }
 
             if (IsPairPuzzle(currentCase.MiniGameMode))
             {
