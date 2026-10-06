@@ -59,21 +59,33 @@ namespace LostAndFound.Cases
         // chronology puzzles require a full permutation of their fragments.
         public bool HasMiniGame => MiniGameAfterClue > 0 && MiniGameCards != null &&
                                    MiniGameCards.Length > 0 && MiniGameCorrectOrder != null &&
-                                   (MiniGameMode == "CrossCheck" || MiniGameMode == "Pair"
-                                       ? MiniGameCorrectOrder.Length == 2 &&
-                                         MiniGameCards.Length >= 3 &&
-                                         MiniGameCorrectOrder[0] != MiniGameCorrectOrder[1] &&
+                                   (MiniGameMode == "Mechanism"
+                                       ? MiniGameCards.Length >= 4 &&
+                                         MiniGameCorrectOrder.Length == 3 &&
                                          MiniGameCorrectOrder[0] >= 0 &&
                                          MiniGameCorrectOrder[1] >= 0 &&
+                                         MiniGameCorrectOrder[2] >= 0 &&
                                          MiniGameCorrectOrder[0] < MiniGameCards.Length &&
-                                         MiniGameCorrectOrder[1] < MiniGameCards.Length
-                                       : (MiniGameMode == "Spot" || MiniGameMode == "Compare" ||
-                                          MiniGameMode == "Focus" || MiniGameMode == "Catalog" ||
-                                          MiniGameMode == "Repair"
-                                              ? MiniGameCorrectOrder.Length == 1 &&
-                                                MiniGameCorrectOrder[0] >= 0 &&
-                                                MiniGameCorrectOrder[0] < MiniGameCards.Length
-                                              : MiniGameCorrectOrder.Length == MiniGameCards.Length));
+                                         MiniGameCorrectOrder[1] < MiniGameCards.Length &&
+                                         MiniGameCorrectOrder[2] < MiniGameCards.Length &&
+                                         MiniGameCorrectOrder[0] != MiniGameCorrectOrder[1] &&
+                                         MiniGameCorrectOrder[0] != MiniGameCorrectOrder[2] &&
+                                         MiniGameCorrectOrder[1] != MiniGameCorrectOrder[2]
+                                       : MiniGameMode == "CrossCheck" || MiniGameMode == "Pair"
+                                           ? MiniGameCorrectOrder.Length == 2 &&
+                                             MiniGameCards.Length >= 3 &&
+                                             MiniGameCorrectOrder[0] != MiniGameCorrectOrder[1] &&
+                                             MiniGameCorrectOrder[0] >= 0 &&
+                                             MiniGameCorrectOrder[1] >= 0 &&
+                                             MiniGameCorrectOrder[0] < MiniGameCards.Length &&
+                                             MiniGameCorrectOrder[1] < MiniGameCards.Length
+                                           : (MiniGameMode == "Spot" || MiniGameMode == "Compare" ||
+                                              MiniGameMode == "Focus" || MiniGameMode == "Catalog" ||
+                                              MiniGameMode == "Repair"
+                                                  ? MiniGameCorrectOrder.Length == 1 &&
+                                                    MiniGameCorrectOrder[0] >= 0 &&
+                                                    MiniGameCorrectOrder[0] < MiniGameCards.Length
+                                                  : MiniGameCorrectOrder.Length == MiniGameCards.Length));
 
         public int RequiredClues => Clues == null ? 0 : Clues.Length;
 
