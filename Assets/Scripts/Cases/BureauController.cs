@@ -1913,6 +1913,312 @@ namespace LostAndFound.Cases
                 : text;
         }
 
+        private void DrawArchiveOrderPuzzle(
+            float scale,
+            GUIStyle button,
+            GUIStyle body)
+        {
+            int count = currentCase.MiniGameCards.Length;
+            if (assemblySlots.Length != count)
+            {
+                assemblySlots = new int[count];
+                for (int i = 0; i < count; i++)
+                    assemblySlots[i] = -1;
+            }
+
+            Color ink = new Color(0.31f, 0.20f, 0.12f);
+            Color muted = new Color(0.50f, 0.38f, 0.27f);
+            GUIStyle stampStyle = LabelStyle(
+                14, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.62f, 0.24f, 0.19f));
+            GUIStyle cardStyle = LabelStyle(
+                16, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            cardStyle.wordWrap = true;
+            GUIStyle slotStyle = LabelStyle(
+                15, FontStyle.Normal, TextAnchor.MiddleCenter, scale, muted);
+            slotStyle.wordWrap = true;
+            GUIStyle helperStyle = LabelStyle(
+                16, FontStyle.Normal, TextAnchor.MiddleCenter, scale, ink);
+            helperStyle.wordWrap = true;
+
+            GUI.Label(
+                R(470, 510, 980, 32, scale),
+                "ПЕРЕТАЩИТЕ АРХИВНЫЕ КАРТОЧКИ НА ЛИНИЮ ВРЕМЕНИ",
+                stampStyle);
+
+            float sourceWidth = count <= 3 ? 320f : 245f;
+            float sourceGap = count <= 3 ? 35f : 20f;
+            float totalSource = sourceWidth * count + sourceGap * (count - 1);
+            float sourceStart = 960f - totalSource * 0.5f;
+
+            Event evt = Event.current;
+
+            for (int i = 0; i < count; i++)
+            {
+                bool placed = FindPuzzleSlotForItem(i) >= 0;
+                Rect source = R(
+                    sourceStart + i * (sourceWidth + sourceGap),
+                    550,
+                    sourceWidth,
+                    118,
+                    scale);
+
+                if (!placed && !(draggingPuzzleItem && draggedPuzzleItem == i))
+                {
+                    GUI.DrawTexture(
+                        source,
+                        paperTexture,
+                        ScaleMode.StretchToFill,
+                        true);
+                    GUI.DrawTexture(
+                        new Rect(
+                            source.x + 12f * scale,
+                            source.y + 9f * scale,
+                            72f * scale,
+                            24f * scale),
+                        accentTexture,
+                        ScaleMode.StretchToFill,
+                        true);
+                    GUI.Label(
+                        new Rect(
+                            source.x + 13f * scale,
+                            source.y + 8f * scale,
+                            70f * scale,
+                            25f * scale),
+                        "АРХИВ",
+                        stampStyle);
+                    GUI.Label(
+                        new Rect(
+                            source.x + 15f * scale,
+                            source.y + 34f * scale,
+                            source.width - 30f * scale,
+                            source.height - 42f * scale),
+                        currentCase.MiniGameCards[i],
+                        cardStyle);
+
+                    TryBeginPuzzleDrag(i, source, evt);
+                }
+            }
+
+            // Timeline.
+            GUI.DrawTexture(
+                R(490, 737, 940, 6, scale),
+                accentTexture,
+                ScaleMode.StretchToFill,
+                true);
+
+            Rect[] slots = new Rect[count];
+            float slotWidth = count <= 3 ? 300f : 220f;
+            float slotGap = count <= 3 ? 45f : 20f;
+            float totalSlots = slotWidth * count + slotGap * (count - 1);
+            float slotStart = 960f - totalSlots * 0.5f;
+
+            for (int slot = 0; slot < count; slot++)
+            {
+                Rect target = R(
+                    slotStart + slot * (slotWidth + slotGap),
+                    692,
+                    slotWidth,
+                    132,
+                    scale);
+                slots[slot] = target;
+
+                DrawNineSlice(
+                    target,
+                    emptyReceiptSlotTexture,
+                    18);
+
+                int item = assemblySlots[slot];
+                if (item >= 0)
+                {
+                    GUI.DrawTexture(
+                        new Rect(
+                            target.x + 7f * scale,
+                            target.y + 7f * scale,
+                            target.width - 14f * scale,
+                            target.height - 14f * scale),
+                        paperTexture,
+                        ScaleMode.StretchToFill,
+                        true);
+
+                    GUI.Label(
+                        new Rect(
+                            target.x + 12f * scale,
+                            target.y + 15f * scale,
+                            target.width - 24f * scale,
+                            target.height - 30f * scale),
+                        currentCase.MiniGameCards[item],
+                        cardStyle);
+
+                    TryBeginPuzzleDrag(item, target, evt);
+                }
+                else
+                {
+                    GUI.Label(
+                        target,
+                        $"{slot + 1}\nПЕРЕТАЩИТЕ СЮДА",
+                        slotStyle);
+                }
+            }
+
+            HandlePuzzleDrop(slots, false);
+
+            GUI.Label(
+                R(500, 842, 920, 68, scale),
+                string.IsNullOrEmpty(miniGameFeedback)
+                    ? "Карточки можно переставлять сколько угодно. Когда порядок будет правильным, улика добавится автоматически."
+                    : miniGameFeedback,
+                helperStyle);
+
+            DrawDraggedPuzzleCard(
+                scale,
+                paperTexture,
+                cardStyle,
+                false);
+        }
+
+        private int FindPuzzleSlotForItem(int item)
+        {
+            for (int i = 0; i < assemblySlots.Length; i++)
+                if (assemblySlots[i] == item)
+                    return i;
+
+            return -1;
+        }
+
+        private void TryBeginPuzzleDrag(
+            int item,
+            Rect rect,
+            Event evt)
+        {
+            if (evt.type != EventType.MouseDown ||
+                evt.button != 0 ||
+                !rect.Contains(evt.mousePosition))
+                return;
+
+            draggedPuzzleItem = item;
+            draggingPuzzleItem = true;
+            puzzleDragOffset = evt.mousePosition - rect.position;
+
+            int oldSlot = FindPuzzleSlotForItem(item);
+            if (oldSlot >= 0)
+                assemblySlots[oldSlot] = -1;
+
+            evt.Use();
+        }
+
+        private void HandlePuzzleDrop(
+            Rect[] slots,
+            bool restoration)
+        {
+            if (!draggingPuzzleItem)
+                return;
+
+            Event evt = Event.current;
+            if (evt.type != EventType.MouseUp || evt.button != 0)
+                return;
+
+            int dropSlot = -1;
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i].Contains(evt.mousePosition))
+                {
+                    dropSlot = i;
+                    break;
+                }
+            }
+
+            if (dropSlot >= 0)
+            {
+                int displaced = assemblySlots[dropSlot];
+                assemblySlots[dropSlot] = draggedPuzzleItem;
+
+                if (displaced >= 0 && displaced != draggedPuzzleItem)
+                {
+                    // The displaced document simply returns to the source area.
+                    int old = FindPuzzleSlotForItem(displaced);
+                    if (old >= 0 && old != dropSlot)
+                        assemblySlots[old] = -1;
+                }
+
+                EvaluatePuzzleSlots(restoration);
+            }
+            else
+            {
+                miniGameFeedback = restoration
+                    ? "Обрывок возвращён на стол."
+                    : "Карточка возвращена в архив.";
+            }
+
+            draggedPuzzleItem = -1;
+            draggingPuzzleItem = false;
+            evt.Use();
+        }
+
+        private void EvaluatePuzzleSlots(bool restoration)
+        {
+            bool complete = true;
+            for (int i = 0; i < assemblySlots.Length; i++)
+                complete &= assemblySlots[i] >= 0;
+
+            if (!complete)
+            {
+                miniGameFeedback = restoration
+                    ? "Продолжайте собирать документ."
+                    : "Заполните все места на линии времени.";
+                return;
+            }
+
+            bool correct = true;
+            for (int i = 0; i < assemblySlots.Length; i++)
+                correct &=
+                    assemblySlots[i] == currentCase.MiniGameCorrectOrder[i];
+
+            if (correct)
+            {
+                CaseSession.CompleteMiniGame();
+                miniGameFeedback = currentCase.MiniGameResult;
+            }
+            else
+            {
+                miniGameFeedback = restoration
+                    ? "Фрагменты пока не складываются в цельный документ. Перетащите их в другой порядок."
+                    : "Хронология не сходится. Переставьте карточки по времени.";
+            }
+        }
+
+        private void DrawDraggedPuzzleCard(
+            float scale,
+            Texture2D texture,
+            GUIStyle labelStyle,
+            bool torn)
+        {
+            if (!draggingPuzzleItem ||
+                draggedPuzzleItem < 0 ||
+                draggedPuzzleItem >= currentCase.MiniGameCards.Length)
+                return;
+
+            Event evt = Event.current;
+            Vector2 mouse = evt.mousePosition;
+            float width = torn ? 310f * scale : 300f * scale;
+            float height = torn ? 104f * scale : 112f * scale;
+            Rect floating = new Rect(
+                mouse.x - Mathf.Min(puzzleDragOffset.x, width * 0.85f),
+                mouse.y - Mathf.Min(puzzleDragOffset.y, height * 0.85f),
+                width,
+                height);
+
+            GUI.DrawTexture(
+                floating,
+                texture,
+                ScaleMode.StretchToFill,
+                true);
+            GUI.Label(
+                floating,
+                currentCase.MiniGameCards[draggedPuzzleItem],
+                labelStyle);
+        }
+
         private void DrawMatchingEvidencePuzzle(
             float scale, GUIStyle button, GUIStyle body)
         {
