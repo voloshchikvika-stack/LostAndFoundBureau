@@ -242,6 +242,99 @@ namespace LostAndFound.Cases
             return texture;
         }
 
+        private Texture2D MakeGearTexture(
+            Color metalColor,
+            int teeth,
+            bool broken)
+        {
+            const int size = 192;
+            Texture2D texture = new Texture2D(
+                size, size, TextureFormat.RGBA32, false);
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+
+            Color transparent = new Color(0f, 0f, 0f, 0f);
+            Color dark = Color.Lerp(metalColor, Color.black, 0.42f);
+            Color light = Color.Lerp(metalColor, Color.white, 0.28f);
+            float center = (size - 1) * 0.5f;
+            float maxRadius = size * 0.47f;
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - center;
+                    float dy = y - center;
+                    float radius = Mathf.Sqrt(dx * dx + dy * dy);
+                    float normalizedRadius = radius / maxRadius;
+                    float angle = Mathf.Atan2(dy, dx);
+                    float angle01 = (angle + Mathf.PI) / (Mathf.PI * 2f);
+                    float toothPhase = Mathf.Repeat(angle01 * teeth, 1f);
+
+                    float outerRadius = toothPhase < 0.53f ? 1f : 0.84f;
+                    bool inside = normalizedRadius <= outerRadius;
+                    bool centerHole = normalizedRadius < 0.13f;
+
+                    if (broken)
+                    {
+                        // Missing wedge + dark crack makes the decoy obvious
+                        // visually without relying on its text label.
+                        float brokenAngle = Mathf.DeltaAngle(
+                            angle * Mathf.Rad2Deg, 28f);
+
+                        if (Mathf.Abs(brokenAngle) < 24f &&
+                            normalizedRadius > 0.52f)
+                            inside = false;
+                    }
+
+                    if (!inside || centerHole)
+                    {
+                        texture.SetPixel(x, y, transparent);
+                        continue;
+                    }
+
+                    float edge = Mathf.InverseLerp(
+                        1f,
+                        0.68f,
+                        normalizedRadius);
+
+                    Color pixel = Color.Lerp(dark, metalColor, edge);
+                    float highlight = Mathf.Clamp01(
+                        1f - Vector2.Distance(
+                            new Vector2(x, y),
+                            new Vector2(size * 0.36f, size * 0.68f)) /
+                            (size * 0.60f));
+                    pixel = Color.Lerp(pixel, light, highlight * 0.24f);
+
+                    if (normalizedRadius > 0.42f &&
+                        toothPhase > 0.48f &&
+                        toothPhase < 0.58f)
+                        pixel = Color.Lerp(pixel, dark, 0.18f);
+
+                    texture.SetPixel(x, y, pixel);
+                }
+            }
+
+            if (broken)
+            {
+                PaintLine(
+                    texture,
+                    88, 101,
+                    128, 142,
+                    5,
+                    new Color(0.20f, 0.11f, 0.08f, 1f));
+                PaintLine(
+                    texture,
+                    110, 121,
+                    102, 151,
+                    4,
+                    new Color(0.20f, 0.11f, 0.08f, 1f));
+            }
+
+            texture.Apply();
+            return texture;
+        }
+
         private void LoadPuzzleVisuals()
         {
             for (int i = 0; i < photoEvidenceImages.Length; i++)
