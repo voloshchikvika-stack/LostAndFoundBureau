@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using LostAndFound.Match3;
+using LostAndFound.Mobile;
 
 namespace LostAndFound.Cases
 {
@@ -66,8 +67,9 @@ namespace LostAndFound.Cases
         private static float Scale()
         {
             return Mathf.Clamp(
-                Mathf.Min(Screen.width / 1920f, Screen.height / 1080f),
-                0.70f, 1.30f);
+                MobileLayout.Scale,
+                0.60f,
+                1.30f);
         }
 
         private Rect AreaRect(float scale)
@@ -77,7 +79,12 @@ namespace LostAndFound.Cases
                 resetConfirmation ? 196f :
                 inMatch3 ? 337f : 289f;
 
-            return new Rect(Margin, Margin, PanelWidth * scale, height * scale);
+            Rect safe = MobileLayout.SafeAreaGui;
+            return new Rect(
+                safe.x + Margin * scale,
+                safe.y + Margin * scale,
+                PanelWidth * scale,
+                height * scale);
         }
 
         public static bool IsPointerOverPanel(Vector2 screenPosition)
@@ -87,16 +94,18 @@ namespace LostAndFound.Cases
                 return false;
 
             Rect bounds = panel.AreaRect(Scale());
-            Vector2 guiPosition = new Vector2(
-                screenPosition.x, Screen.height - screenPosition.y);
+            Vector2 guiPosition = MobileLayout.ScreenToGui(screenPosition);
             return bounds.Contains(guiPosition);
         }
 
         private Rect At(float x, float y, float width, float height, float scale)
         {
+            Rect safe = MobileLayout.SafeAreaGui;
             return new Rect(
-                Margin + x * scale, Margin + y * scale,
-                width * scale, height * scale);
+                safe.x + (Margin + x) * scale,
+                safe.y + (Margin + y) * scale,
+                width * scale,
+                height * scale);
         }
 
         private void PrepareStyles(float scale)
