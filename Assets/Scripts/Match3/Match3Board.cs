@@ -1624,8 +1624,8 @@ namespace LostAndFound.Match3
             if (hudCardTexture == null || pieceTextures == null)
                 return;
 
-            float scale = Mathf.Min(Screen.width / 1920f, Screen.height / 1080f);
-            scale = Mathf.Clamp(scale, 0.65f, 2.5f);
+            float scale = MobileLayout.Scale;
+            Rect safe = MobileLayout.SafeAreaGui;
 
             GUIStyle titleStyle = CreateLabelStyle(17, FontStyle.Normal, TextAnchor.UpperCenter, scale);
             titleStyle.normal.textColor = new Color(0.75f, 0.80f, 0.88f);
@@ -1641,8 +1641,8 @@ namespace LostAndFound.Match3
             float scoreWidth = 190f * scale;
             float gap = 16f * scale;
             float totalWidth = movesWidth + goalWidth + scoreWidth + gap * 2f;
-            float startX = (Screen.width - totalWidth) * 0.5f;
-            float y = 22f * scale;
+            float startX = safe.x + (safe.width - totalWidth) * 0.5f;
+            float y = safe.y + 22f * scale;
 
             Rect movesRect = new Rect(startX, y, movesWidth, cardHeight);
             Rect goalRect = new Rect(startX + movesWidth + gap, y, goalWidth, cardHeight);
@@ -1680,25 +1680,24 @@ namespace LostAndFound.Match3
 
         private static float InventoryScale()
         {
-            return Mathf.Clamp(
-                Mathf.Min(Screen.width / 1920f, Screen.height / 1080f),
-                0.65f, 2.5f);
+            return MobileLayout.Scale;
         }
 
         private Rect InventoryRect(float scale)
         {
+            Rect safe = MobileLayout.SafeAreaGui;
             return new Rect(
-                Screen.width - 266f * scale - 18f * scale,
-                150f * scale, 266f * scale, 368f * scale);
+                safe.xMax - 266f * scale - 18f * scale,
+                safe.y + 150f * scale,
+                266f * scale,
+                368f * scale);
         }
 
         private bool IsPointerOverInventory(Vector2 screenPosition)
         {
             float scale = InventoryScale();
             Rect rect = InventoryRect(scale);
-            Vector2 uiPoint = new Vector2(
-                screenPosition.x,
-                Screen.height - screenPosition.y);
+            Vector2 uiPoint = MobileLayout.ScreenToGui(screenPosition);
             return rect.Contains(uiPoint);
         }
 
@@ -1797,9 +1796,10 @@ namespace LostAndFound.Match3
 
             float width = 600f * scale;
             float height = 250f * scale;
+            Rect safe = MobileLayout.SafeAreaGui;
             Rect card = new Rect(
-                Screen.width * 0.5f - width * 0.5f,
-                Screen.height * 0.5f - height * 0.5f,
+                safe.center.x - width * 0.5f,
+                safe.center.y - height * 0.5f,
                 width,
                 height);
 
