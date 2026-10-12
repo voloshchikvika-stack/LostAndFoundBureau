@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using LostAndFound.Mobile;
 
 namespace LostAndFound.Cases
 {
@@ -586,8 +587,7 @@ namespace LostAndFound.Cases
 
         private void OnGUI()
         {
-            float scale = Mathf.Min(Screen.width / 1920f, Screen.height / 1080f);
-            scale = Mathf.Clamp(scale, 0.65f, 2.5f);
+            float scale = MobileLayout.Scale;
 
             if (mode == BureauMode.Room || mode == BureauMode.MiniGame)
             {
@@ -668,7 +668,10 @@ namespace LostAndFound.Cases
 
         private Rect R(float x, float y, float w, float h, float scale)
         {
-            return new Rect(x * scale, y * scale, w * scale, h * scale);
+            // Keep all important controls inside the device safe area.
+            // The scale parameter is retained because all existing drawing
+            // methods already use it for font sizes and spacing.
+            return MobileLayout.R(x, y, w, h);
         }
 
         private GUIStyle LabelStyle(int size, FontStyle fontStyle, TextAnchor alignment, float scale, Color? color = null)
