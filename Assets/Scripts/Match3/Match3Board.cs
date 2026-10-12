@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using LostAndFound.Cases;
+using LostAndFound.Mobile;
 
 namespace LostAndFound.Match3
 {
@@ -41,6 +42,13 @@ namespace LostAndFound.Match3
         private bool rocketsEnabled;
         private bool colorClearEnabled;
         private string selectedInventoryBooster;
+
+        // Mobile input: a short touch is still a tap, while dragging far
+        // enough swaps the touched piece directly with its neighbour.
+        private bool pointerGestureActive;
+        private Vector2 pointerStartScreen;
+        private Match3Piece pointerStartPiece;
+
         private Sprite rocketHorizontalBonusSprite;
         private Sprite rocketVerticalBonusSprite;
         private Sprite planeBonusSprite;
@@ -119,7 +127,10 @@ namespace LostAndFound.Match3
         private void Update()
         {
             if (inputLocked || gameEnded)
+            {
+                pointerGestureActive = false;
                 return;
+            }
 
             if (TryGetPointerDown(out Vector2 screenPosition))
             {
@@ -131,8 +142,31 @@ namespace LostAndFound.Match3
                 if (IsPointerOverInventory(screenPosition))
                     return;
 
-                HandlePointer(screenPosition);
+                pointerGestureActive = true;
+                pointerStartScreen = screenPosition;
+                pointerStartPiece = GetPieceAtScreenPosition(screenPosition);
+                return;
             }
+
+            if (!pointerGestureActive ||
+                !TryGetPointerUp(out Vector2 releasePosition))
+                return;
+
+            pointerGestureActive = false;
+
+            Vector2 delta = releasePosition - pointerStartScreen;
+
+            if (string.IsNullOrEmpty(selectedInventoryBooster) &&
+                pointerStartPiece != null &&
+                delta.magnitude >= MobileLayout.SwipeThreshold)
+            {
+                HandleSwipe(pointerStartPiece, delta);
+                return;
+            }
+
+            // A short touch behaves exactly like the old click controls,
+            // preserving tap-tap swapping and power-up activation.
+            HandlePointer(pointerStartScreen);
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -286,20 +320,92 @@ namespace LostAndFound.Match3
 
         private bool TryGetPointerDown(out Vector2 screenPosition)
         {
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            // Prefer real touchscreen input on phones/tablets. Mouse remains
+            // available in the Editor for normal desktop testing.
+            if (Touchscreen.current != null &&
+                Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
+            {
+                screenPosition =
+                    Touchscreen.current.primaryTouch.position.ReadValue();
+                return true;
+            }
+
+            if (Mouse.current != null &&
+                Mouse.current.leftButton.wasPressedThisFrame)
             {
                 screenPosition = Mouse.current.position.ReadValue();
                 return true;
             }
 
-            if (Touchscreen.current != null && Touchscreen.current.primaryTouch.press.wasPressedThisFrame)
+            screenPosition = default;
+            return false;
+        }
+
+        private bool TryGetPointerUp(out Vector2 screenPosition)
+        {
+            if (Touchscreen.current != null &&
+                Touchscreen.current.primaryTouch.press.wasReleasedThisFrame)
             {
-                screenPosition = Touchscreen.current.primaryTouch.position.ReadValue();
+                screenPosition =
+                    Touchscreen.current.primaryTouch.position.ReadValue();
+                return true;
+            }
+
+            if (Mouse.current != null &&
+                Mouse.current.leftButton.wasReleasedThisFrame)
+            {
+                screenPosition = Mouse.current.position.ReadValue();
                 return true;
             }
 
             screenPosition = default;
             return false;
+        }
+
+        private Match3Piece GetPieceAtScreenPosition(Vector2 screenPosition)
+        {
+            if (mainCamera == null)
+                return null;
+
+            Vector3 world = mainCamera.ScreenToWorldPoint(
+                new Vector3(
+                    screenPosition.x,
+                    screenPosition.y,
+                    -mainCamera.transform.position.z));
+
+            int column = Mathf.RoundToInt((world.x - StartX) / cellSize);
+            int row = Mathf.RoundToInt((world.y - StartY) / cellSize);
+
+            return IsInside(column, row)
+                ? pieces[column, row]
+                : null;
+        }
+
+        private void HandleSwipe(Match3Piece startPiece, Vector2 delta)
+        {
+            int column = startPiece.Column;
+            int row = startPiece.Row;
+
+            if (Mathf.Abs(delta.x) >= Mathf.Abs(delta.y))
+                column += delta.x >= 0f ? 1 : -1;
+            else
+                row += delta.y >= 0f ? 1 : -1;
+
+            if (!IsInside(column, row))
+            {
+                HandlePointer(pointerStartScreen);
+                return;
+            }
+
+            Match3Piece target = pieces[column, row];
+            if (target == null)
+            {
+                HandlePointer(pointerStartScreen);
+                return;
+            }
+
+            DeselectCurrent();
+            StartCoroutine(TrySwap(startPiece, target));
         }
 
         private void HandlePointer(Vector2 screenPosition)
