@@ -762,7 +762,14 @@ namespace LostAndFound.Cases
             if (currentCase == null)
                 return;
 
-            Rect clientRect = R(140, 235, 420, 515, scale);
+            // The client is intentionally larger than before. Their lower body
+            // extends behind the foreground desk and is clipped at the desk edge,
+            // so the PNG feels like a person standing in the room rather than a
+            // small sticker pasted on top of the background.
+            Rect clientRect = R(105, 125, 610, 745, scale);
+            float deskCutoffY = R(0, 775, 1, 1, scale).y;
+
+            GUI.BeginGroup(new Rect(0f, 0f, Screen.width, deskCutoffY));
 
             if (clientImage != null)
             {
@@ -770,23 +777,25 @@ namespace LostAndFound.Cases
             }
             else
             {
-                GUI.DrawTexture(R(205, 330, 330, 430, scale), panelStrongTexture);
+                GUI.DrawTexture(R(185, 270, 390, 505, scale), panelStrongTexture);
 
                 GUIStyle initialStyle = LabelStyle(120, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.82f, 0.72f, 0.55f));
                 GUIStyle hintStyle = LabelStyle(16, FontStyle.Normal, TextAnchor.MiddleCenter, scale, new Color(0.72f, 0.76f, 0.78f));
 
                 string initial = string.IsNullOrEmpty(currentCase.ClientName) ? "?" : currentCase.ClientName.Substring(0, 1);
-                GUI.Label(R(235, 385, 270, 190, scale), initial, initialStyle);
-                GUI.Label(R(225, 570, 290, 80, scale), "Добавьте Client.png\nдля персонажа", hintStyle);
+                GUI.Label(R(235, 350, 290, 190, scale), initial, initialStyle);
+                GUI.Label(R(225, 555, 310, 80, scale), "Добавьте Client.png\nдля персонажа", hintStyle);
             }
+
+            GUI.EndGroup();
         }
 
         private void DrawClientIntro(float scale)
         {
             DrawCaseFolderOnDesk(scale, false);
             DrawSpeechBubble(
-                R(560, 120, 1160, 515, scale),
-                R(535, 525, 82, 70, scale),
+                R(610, 115, 1060, 500, scale),
+                R(580, 510, 76, 64, scale),
                 scale);
 
             Color darkCoffee = new Color(0.24f, 0.16f, 0.12f);
@@ -914,14 +923,14 @@ namespace LostAndFound.Cases
         private void DrawDeskMode(float scale)
         {
             DrawSpeechBubble(
-                R(610, 160, 960, 205, scale),
-                R(575, 300, 80, 68, scale),
+                R(650, 155, 875, 180, scale),
+                R(618, 274, 70, 60, scale),
                 scale);
 
             GUIStyle nameStyle = LabelStyle(22, FontStyle.Bold, TextAnchor.MiddleLeft, scale, new Color(0.25f, 0.18f, 0.13f));
             GUIStyle bodyStyle = LabelStyle(20, FontStyle.Normal, TextAnchor.MiddleLeft, scale, new Color(0.16f, 0.13f, 0.11f));
 
-            GUI.Label(R(665, 185, 820, 34, scale), currentCase.ClientName, nameStyle);
+            GUI.Label(R(705, 178, 760, 34, scale), currentCase.ClientName, nameStyle);
 
             int responseIndex = CaseSession.CompletedClues - 1;
             bool hasResponse = currentCase.ClueResponses != null &&
@@ -936,7 +945,7 @@ namespace LostAndFound.Cases
                     ? currentCase.ClueResponses[responseIndex]
                     : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
 
-            GUI.Label(R(665, 235, 830, 95, scale), text, bodyStyle);
+            GUI.Label(R(705, 225, 750, 82, scale), text, bodyStyle);
 
             // The active case is always on the desk, even before the first clue.
             DrawCaseFolderOnDesk(scale, true);
@@ -944,43 +953,57 @@ namespace LostAndFound.Cases
 
         private void DrawCaseFolderOnDesk(float scale, bool interactive)
         {
-            // Keep the case high enough on the desk to be clearly visible on every aspect ratio.
-            Rect folderRect = R(690, 690, 540, 245, scale);
-            Rect shadowRect = R(705, 708, 540, 245, scale);
+            Rect folderRect = R(710, 680, 500, 275, scale);
 
-            GUI.DrawTexture(shadowRect, overlayTexture, ScaleMode.StretchToFill, true);
-
-            // Always draw a visible folder base. The optional PNG sits on top of it.
-            DrawNineSlice(folderRect, folderTexture, 18);
+            GUIStyle folderTitle = LabelStyle(
+                18, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.24f, 0.13f, 0.07f));
+            GUIStyle folderSmall = LabelStyle(
+                13, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.37f, 0.23f, 0.12f));
 
             if (caseFolderImage != null)
             {
-                GUI.DrawTexture(R(705, 700, 510, 210, scale),
-                    caseFolderImage, ScaleMode.ScaleToFit, true);
+                // The artist-provided PNG is now the actual case object.
+                // Nothing opaque is drawn behind it or over its centre.
+                GUI.DrawTexture(folderRect, caseFolderImage, ScaleMode.ScaleToFit, true);
+
+                // Only a small unobtrusive status tag remains, so the custom
+                // folder artwork stays visible.
+                DrawNineSlice(R(810, 870, 300, 58, scale), folderPaperTexture, 16);
+                GUI.Label(R(825, 876, 270, 22, scale),
+                    $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
+                GUI.Label(R(825, 900, 270, 18, scale),
+                    $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
+                    folderSmall);
             }
-
-            GUIStyle folderTitle = LabelStyle(
-                22, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                new Color(0.24f, 0.13f, 0.07f));
-            GUIStyle folderSmall = LabelStyle(
-                14, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                new Color(0.37f, 0.23f, 0.12f));
-
-            DrawNineSlice(R(790, 735, 340, 112, scale), folderPaperTexture, 18);
-            GUI.Label(R(810, 748, 300, 34, scale),
-                $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
-            GUI.Label(R(810, 787, 300, 28, scale),
-                currentCase.LostItemName, folderSmall);
-
-            GUI.Label(R(810, 818, 300, 25, scale),
-                $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}", folderSmall);
+            else
+            {
+                // Fallback for a case that has no folder PNG yet.
+                DrawNineSlice(folderRect, folderTexture, 18);
+                DrawNineSlice(R(790, 735, 340, 112, scale), folderPaperTexture, 18);
+                GUI.Label(R(810, 748, 300, 34, scale),
+                    $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
+                GUI.Label(R(810, 787, 300, 28, scale),
+                    currentCase.LostItemName, folderSmall);
+                GUI.Label(R(810, 818, 300, 25, scale),
+                    $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
+                    folderSmall);
+            }
 
             if (!interactive)
                 return;
 
-            GUIStyle openStyle = ButtonStyle(16, scale);
-            if (GUI.Button(R(790, 865, 340, 52, scale), "ОТКРЫТЬ ДЕЛО", openStyle))
+            // The folder itself is the clickable object. No large button is
+            // painted over it anymore.
+            GUIStyle invisibleButton = new GUIStyle(GUIStyle.none);
+            if (GUI.Button(folderRect, GUIContent.none, invisibleButton))
                 mode = BureauMode.CaseFile;
+
+            GUIStyle hintStyle = LabelStyle(
+                12, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.36f, 0.22f, 0.13f, 0.88f));
+            GUI.Label(R(825, 936, 270, 20, scale), "НАЖМИТЕ НА ПАПКУ", hintStyle);
         }
 
         private void DrawCaseFile(float scale)
