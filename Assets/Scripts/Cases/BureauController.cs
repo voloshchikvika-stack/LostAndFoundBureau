@@ -766,7 +766,7 @@ namespace LostAndFound.Cases
             // extends behind the foreground desk and is clipped at the desk edge,
             // so the PNG feels like a person standing in the room rather than a
             // small sticker pasted on top of the background.
-            Rect clientRect = R(105, 125, 610, 745, scale);
+            Rect clientRect = R(165, 125, 575, 745, scale);
             float deskCutoffY = R(0, 775, 1, 1, scale).y;
 
             GUI.BeginGroup(new Rect(0f, 0f, Screen.width, deskCutoffY));
@@ -953,7 +953,7 @@ namespace LostAndFound.Cases
 
         private void DrawCaseFolderOnDesk(float scale, bool interactive)
         {
-            Rect folderRect = R(710, 680, 500, 275, scale);
+            Rect folderRect = R(710, 735, 500, 275, scale);
 
             GUIStyle folderTitle = LabelStyle(
                 18, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
@@ -970,10 +970,10 @@ namespace LostAndFound.Cases
 
                 // Only a small unobtrusive status tag remains, so the custom
                 // folder artwork stays visible.
-                DrawNineSlice(R(810, 870, 300, 58, scale), folderPaperTexture, 16);
-                GUI.Label(R(825, 876, 270, 22, scale),
+                DrawNineSlice(R(810, 925, 300, 58, scale), folderPaperTexture, 16);
+                GUI.Label(R(825, 931, 270, 22, scale),
                     $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
-                GUI.Label(R(825, 900, 270, 18, scale),
+                GUI.Label(R(825, 955, 270, 18, scale),
                     $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
                     folderSmall);
             }
@@ -1003,7 +1003,7 @@ namespace LostAndFound.Cases
             GUIStyle hintStyle = LabelStyle(
                 12, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
                 new Color(0.36f, 0.22f, 0.13f, 0.88f));
-            GUI.Label(R(825, 936, 270, 20, scale), "НАЖМИТЕ НА ПАПКУ", hintStyle);
+            GUI.Label(R(825, 992, 270, 20, scale), "НАЖМИТЕ НА ПАПКУ", hintStyle);
         }
 
         private void DrawCaseFile(float scale)
