@@ -600,6 +600,7 @@ namespace LostAndFound.Cases
             DrawOffice(scale);
             bool canInteract = !cluePopupVisible && !reactionVisible;
             GUI.enabled = canInteract;
+            DrawTopBar(scale);
 
             if (mode == BureauMode.Finished)
             {
@@ -609,8 +610,6 @@ namespace LostAndFound.Cases
             }
 
             DrawClient(scale);
-            DrawDeskForeground(scale);
-            DrawTopBar(scale);
 
             // The reaction is its own screen, not a layer on top of the answer sheet.
             if (reactionVisible)
@@ -763,56 +762,31 @@ namespace LostAndFound.Cases
             if (currentCase == null)
                 return;
 
-            // Do NOT crop the portrait above the desk. Place the character lower
-            // in the room and let the foreground tabletop cover the lower body.
-            // This is what makes the person read as seated/standing behind the desk.
-            Rect clientRect = R(160, 245, 590, 760, scale);
+            // The client is intentionally larger than before. Their lower body
+            // extends behind the foreground desk and is clipped at the desk edge,
+            // so the PNG feels like a person standing in the room rather than a
+            // small sticker pasted on top of the background.
+            Rect clientRect = R(165, 125, 575, 745, scale);
+            float deskCutoffY = R(0, 775, 1, 1, scale).y;
+
+            GUI.BeginGroup(new Rect(0f, 0f, Screen.width, deskCutoffY));
 
             if (clientImage != null)
             {
-                Color previous = GUI.color;
-
-                // Only a light warm integration; preserve the original skin and
-                // clothing colours instead of turning the portrait orange.
-                GUI.color = new Color(1f, 0.985f, 0.955f, 1f);
                 GUI.DrawTexture(clientRect, clientImage, ScaleMode.ScaleToFit, true);
-                GUI.color = previous;
             }
             else
             {
-                GUI.DrawTexture(R(185, 350, 390, 505, scale), panelStrongTexture);
+                GUI.DrawTexture(R(185, 270, 390, 505, scale), panelStrongTexture);
 
                 GUIStyle initialStyle = LabelStyle(120, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.82f, 0.72f, 0.55f));
                 GUIStyle hintStyle = LabelStyle(16, FontStyle.Normal, TextAnchor.MiddleCenter, scale, new Color(0.72f, 0.76f, 0.78f));
 
                 string initial = string.IsNullOrEmpty(currentCase.ClientName) ? "?" : currentCase.ClientName.Substring(0, 1);
-                GUI.Label(R(235, 430, 290, 190, scale), initial, initialStyle);
-                GUI.Label(R(225, 635, 310, 80, scale), "Добавьте Client.png\nдля персонажа", hintStyle);
+                GUI.Label(R(235, 350, 290, 190, scale), initial, initialStyle);
+                GUI.Label(R(225, 555, 310, 80, scale), "Добавьте Client.png\nдля персонажа", hintStyle);
             }
-        }
 
-        private void DrawDeskForeground(float scale)
-        {
-            if (officeBackground == null)
-                return;
-
-            // The approved office background already contains the foreground
-            // desk. Re-drawing only this lower slice AFTER the client gives us
-            // a true visual layer without requiring a second art file.
-            //
-            // Background -> client -> this desk slice -> dialogue / case UI.
-            float deskTop = R(0, 760, 1, 1, scale).y;
-            deskTop = Mathf.Clamp(deskTop, 0f, Screen.height);
-
-            Rect clip = new Rect(0f, deskTop, Screen.width, Screen.height - deskTop);
-            if (clip.height <= 0f)
-                return;
-
-            GUI.BeginGroup(clip);
-            GUI.DrawTexture(
-                new Rect(0f, -deskTop, Screen.width, Screen.height),
-                officeBackground,
-                ScaleMode.ScaleAndCrop);
             GUI.EndGroup();
         }
 
