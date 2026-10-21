@@ -610,7 +610,6 @@ namespace LostAndFound.Cases
             }
 
             DrawClient(scale);
-            DrawDeskForeground(scale);
 
             // The reaction is its own screen, not a layer on top of the answer sheet.
             if (reactionVisible)
@@ -763,31 +762,39 @@ namespace LostAndFound.Cases
             if (currentCase == null)
                 return;
 
-            // Keep the approved size, but place the client noticeably deeper
-            // into the scene. The raised foreground desk edge hides the lower
-            // torso and hands so the character reads as standing behind the desk.
-            Rect clientRect = R(165, 220, 575, 745, scale);
+            // The bureau background already contains the real desk.
+            // Draw the client at the approved large size, but clip everything
+            // below the back edge of the tabletop. This makes the person truly
+            // read as standing behind the desk without duplicating the desk art.
+            Rect clientRect = R(160, 135, 590, 760, scale);
+            float deskEdgeY = R(0, 690, 1, 1, scale).y;
+            deskEdgeY = Mathf.Clamp(deskEdgeY, 0f, Screen.height);
+
+            GUI.BeginGroup(new Rect(0f, 0f, Screen.width, deskEdgeY));
 
             if (clientImage != null)
             {
                 Color previous = GUI.color;
-                // A very subtle warm grade helps the character inherit the
-                // golden light of the office without recolouring the artwork.
-                GUI.color = new Color(1f, 0.90f, 0.78f, 1f);
+
+                // Keep the original portrait colours and add only a slight warm
+                // integration with the golden office lighting.
+                GUI.color = new Color(1f, 0.975f, 0.94f, 1f);
                 GUI.DrawTexture(clientRect, clientImage, ScaleMode.ScaleToFit, true);
                 GUI.color = previous;
             }
             else
             {
-                GUI.DrawTexture(R(185, 310, 390, 505, scale), panelStrongTexture);
+                GUI.DrawTexture(R(185, 270, 390, 505, scale), panelStrongTexture);
 
                 GUIStyle initialStyle = LabelStyle(120, FontStyle.Bold, TextAnchor.MiddleCenter, scale, new Color(0.82f, 0.72f, 0.55f));
                 GUIStyle hintStyle = LabelStyle(16, FontStyle.Normal, TextAnchor.MiddleCenter, scale, new Color(0.72f, 0.76f, 0.78f));
 
                 string initial = string.IsNullOrEmpty(currentCase.ClientName) ? "?" : currentCase.ClientName.Substring(0, 1);
-                GUI.Label(R(235, 390, 290, 190, scale), initial, initialStyle);
-                GUI.Label(R(225, 595, 310, 80, scale), "Добавьте Client.png\nдля персонажа", hintStyle);
+                GUI.Label(R(235, 350, 290, 190, scale), initial, initialStyle);
+                GUI.Label(R(225, 555, 310, 80, scale), "Добавьте Client.png\nдля персонажа", hintStyle);
             }
+
+            GUI.EndGroup();
         }
 
         private void DrawDeskForeground(float scale)
