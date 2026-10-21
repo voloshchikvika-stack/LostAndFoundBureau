@@ -763,17 +763,17 @@ namespace LostAndFound.Cases
             if (currentCase == null)
                 return;
 
-            // Keep the approved size, but place the client a little deeper
-            // into the scene. The desk foreground drawn afterwards hides the
-            // lower part naturally, so the character really stands behind it.
-            Rect clientRect = R(165, 165, 575, 745, scale);
+            // Keep the approved size, but place the client noticeably deeper
+            // into the scene. The raised foreground desk edge hides the lower
+            // torso and hands so the character reads as standing behind the desk.
+            Rect clientRect = R(165, 220, 575, 745, scale);
 
             if (clientImage != null)
             {
                 Color previous = GUI.color;
                 // A very subtle warm grade helps the character inherit the
                 // golden light of the office without recolouring the artwork.
-                GUI.color = new Color(1f, 0.965f, 0.91f, 1f);
+                GUI.color = new Color(1f, 0.90f, 0.78f, 1f);
                 GUI.DrawTexture(clientRect, clientImage, ScaleMode.ScaleToFit, true);
                 GUI.color = previous;
             }
@@ -800,7 +800,7 @@ namespace LostAndFound.Cases
             // a true visual layer without requiring a second art file.
             //
             // Background -> client -> this desk slice -> dialogue / case UI.
-            float deskTop = R(0, 790, 1, 1, scale).y;
+            float deskTop = R(0, 735, 1, 1, scale).y;
             deskTop = Mathf.Clamp(deskTop, 0f, Screen.height);
 
             Rect clip = new Rect(0f, deskTop, Screen.width, Screen.height - deskTop);
