@@ -766,7 +766,7 @@ namespace LostAndFound.Cases
             // extends behind the foreground desk and is clipped at the desk edge,
             // so the PNG feels like a person standing in the room rather than a
             // small sticker pasted on top of the background.
-            Rect clientRect = R(165, 280, 575, 745, scale);
+            Rect clientRect = R(165, 255, 575, 745, scale);
             float deskCutoffY = R(0, 865, 1, 1, scale).y;
 
             GUI.BeginGroup(new Rect(0f, 0f, Screen.width, deskCutoffY));
