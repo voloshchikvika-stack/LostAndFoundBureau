@@ -826,7 +826,6 @@ namespace LostAndFound.Cases
 
         private void DrawCaseDetails(float scale)
         {
-            DrawCaseFolderOnDesk(scale, false);
             DrawSpeechBubble(
                 R(560, 120, 1160, 515, scale),
                 R(535, 525, 82, 70, scale),
@@ -883,7 +882,6 @@ namespace LostAndFound.Cases
 
         private void DrawInquiry(float scale)
         {
-            DrawCaseFolderOnDesk(scale, false);
             DrawSpeechBubble(R(575, 155, 1100, 440, scale), R(540, 500, 82, 70, scale), scale);
 
             Color darkCoffee = new Color(0.23f, 0.15f, 0.11f);
