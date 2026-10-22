@@ -94,6 +94,9 @@ namespace LostAndFound.Cases
         private bool reactionVisible;
         private bool returnedFromSearch;
         private bool reactionWasCorrect;
+        private bool reactionWasSpecial;
+        private int reactionRatingBefore;
+        private int reactionRatingAfter;
         private int reactionStage;
         private float reactionUntil;
         private string reactionText;
@@ -825,6 +828,14 @@ namespace LostAndFound.Cases
             GUIStyle helperStyle = LabelStyle(16, FontStyle.Normal, TextAnchor.MiddleLeft, scale, mediumCoffee);
             GUIStyle buttonStyle = ButtonStyle(20, scale);
 
+            if (BureauEconomy.SpecialCaseActive)
+            {
+                DrawNineSlice(R(625, 105, 285, 48, scale), goodTexture, 18);
+                GUIStyle specialStyle = LabelStyle(
+                    15, FontStyle.Bold, TextAnchor.MiddleCenter, scale, Color.white);
+                GUI.Label(R(642, 114, 250, 30, scale), "★ ОСОБОЕ ДЕЛО", specialStyle);
+            }
+
             GUI.Label(R(625, 163, 375, 42, scale), currentCase.ClientName, nameStyle);
             GUI.Label(R(980, 168, 660, 32, scale),
                 currentCase.LostItemName.ToUpperInvariant(), itemStyle);
@@ -1463,7 +1474,10 @@ namespace LostAndFound.Cases
             if (reactionVisible)
                 return;
 
+            reactionWasSpecial = BureauEconomy.SpecialCaseActive;
+            reactionRatingBefore = BureauEconomy.BureauRatingPosition;
             lastReward = BureauEconomy.CompleteCase(currentCase.Id, correct);
+            reactionRatingAfter = BureauEconomy.BureauRatingPosition;
             reactionVisible = true;
             reactionWasCorrect = correct;
             reactionStage = 0;
@@ -1516,14 +1530,30 @@ namespace LostAndFound.Cases
             GUI.Label(R(650, 255, 900, 190, scale), reactionText, body);
             if (lastReward > 0)
             {
-                string repReward = reactionWasCorrect
-                    ? "+18 репутации" : "+8 репутации";
+                string progressionReward;
+
+                if (reactionWasSpecial)
+                {
+                    progressionReward = reactionWasCorrect
+                        ? $"рейтинг: №{reactionRatingBefore} → №{reactionRatingAfter}"
+                        : $"особое дело не повысило рейтинг (№{reactionRatingBefore})";
+                }
+                else
+                {
+                    progressionReward = reactionWasCorrect
+                        ? "+18 репутации"
+                        : "+8 репутации";
+                }
+
                 string cardNotice =
                     BureauEconomy.IsCollectibleCase(CaseSession.CurrentCaseIndex)
-                    ? " · карточка в коллекции" : "";
+                    ? " · карточка в коллекции"
+                    : "";
 
-                GUI.Label(R(650, 445, 900, 38, scale),
-                    $"+{lastReward} монет · {repReward}{cardNotice}", title);
+                GUI.Label(
+                    R(650, 445, 900, 38, scale),
+                    $"+{lastReward} монет · {progressionReward}{cardNotice}",
+                    title);
             }
         }
 
@@ -1533,9 +1563,39 @@ namespace LostAndFound.Cases
                 mode != BureauMode.Finished)
                 return;
 
-            GUIStyle info = LabelStyle(20, FontStyle.Bold, TextAnchor.MiddleCenter,
+            GUIStyle info = LabelStyle(
+                20, FontStyle.Bold, TextAnchor.MiddleCenter,
                 scale, new Color(0.25f, 0.17f, 0.11f));
             GUIStyle button = ButtonStyle(17, scale);
+
+            // Reputation is a real progress bar now, not just a number.
+            Rect repRect = R(1015, 20, 280, 58, scale);
+            DrawNineSlice(repRect, buttonTexture, 22);
+
+            float fillWidth = 244f * BureauEconomy.ReputationProgress01;
+            if (fillWidth > 1f)
+            {
+                GUI.DrawTexture(
+                    R(1033, 57, fillWidth, 9, scale),
+                    accentTexture,
+                    ScaleMode.StretchToFill,
+                    true);
+            }
+
+            string reputationLabel = BureauEconomy.SpecialCaseActive
+                ? "★ ОСОБОЕ ДЕЛО"
+                : BureauEconomy.SpecialCasePending
+                    ? "★ ОСОБЫЙ КЛИЕНТ"
+                    : $"РЕПУТАЦИЯ {BureauEconomy.Reputation}/{BureauEconomy.ReputationTarget}";
+
+            GUIStyle repText = LabelStyle(
+                14, FontStyle.Bold, TextAnchor.MiddleCenter,
+                scale, new Color(1f, 0.96f, 0.89f));
+            GUI.Label(R(1028, 28, 254, 27, scale), reputationLabel, repText);
+
+            GUIStyle invisible = new GUIStyle(GUIStyle.none);
+            if (GUI.Button(repRect, GUIContent.none, invisible))
+                OpenOverlay(BureauMode.Reputation);
 
             DrawNineSlice(R(1315, 20, 150, 58, scale), speechBubbleTexture, 24);
             GUI.Label(R(1330, 29, 120, 38, scale), $"{BureauEconomy.Coins} ◈", info);
@@ -1546,15 +1606,12 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(1678, 20, 200, 58, scale), "АРХИВ", button))
                 OpenOverlay(BureauMode.Archive);
 
-            if (GUI.Button(R(1050, 20, 245, 58, scale),
-                $"РЕПУТАЦИЯ {BureauEconomy.Reputation}", button))
-                OpenOverlay(BureauMode.Reputation);
-
             if (GUI.Button(R(1678, 153, 200, 52, scale),
                 "КОЛЛЕКЦИЯ", button))
                 OpenOverlay(BureauMode.Collection);
 
-            if (GUI.Button(R(1678, 90, 200, 52, scale), "НОВАЯ ИГРА", button))
+            if (GUI.Button(R(1678, 90, 200, 52, scale),
+                "НОВАЯ ИГРА", button))
                 OpenOverlay(BureauMode.ResetConfirm);
         }
 
@@ -2044,54 +2101,123 @@ namespace LostAndFound.Cases
 
         private void DrawReputation(float scale)
         {
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
+            GUI.DrawTexture(
+                new Rect(0, 0, Screen.width, Screen.height),
                 overlayTexture);
-            DrawNineSlice(R(330, 170, 1260, 780, scale),
-                folderPaperTexture, 20);
+
+            DrawNineSlice(
+                R(330, 150, 1260, 810, scale),
+                speechBubbleTexture,
+                26);
 
             Color ink = new Color(0.28f, 0.18f, 0.12f);
-            GUIStyle title = LabelStyle(33, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
-            GUIStyle body = LabelStyle(20, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle heading = LabelStyle(25, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            Color coffee = new Color(0.50f, 0.31f, 0.18f);
+
+            GUIStyle title = LabelStyle(
+                32, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle heading = LabelStyle(
+                24, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle body = LabelStyle(
+                18, FontStyle.Normal, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle centered = LabelStyle(
+                18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
             GUIStyle button = ButtonStyle(18, scale);
 
-            GUI.Label(R(395, 205, 1130, 58, scale),
-                "РЕПУТАЦИЯ ДЕТЕКТИВНОГО БЮРО", title);
+            GUI.Label(
+                R(395, 185, 1130, 55, scale),
+                "РЕПУТАЦИЯ И РЕЙТИНГ БЮРО",
+                title);
 
-            GUI.Label(R(460, 294, 1000, 45, scale),
-                $"{BureauEconomy.ReputationTitle} · {BureauEconomy.Reputation} очков",
-                heading);
+            // City ranking.
+            DrawNineSlice(
+                R(430, 275, 470, 185, scale),
+                folderPaperTexture,
+                20);
 
-            GUI.Label(R(460, 344, 1000, 65, scale),
-                $"Завершено дел: {BureauEconomy.CompletedUniqueCases} · " +
-                $"Текущий уровень: {CaseSession.CurrentCaseIndex + 1}/{CaseDatabase.TotalLevels}",
-                body);
+            GUI.Label(
+                R(470, 300, 390, 40, scale),
+                "ГОРОДСКОЙ РЕЙТИНГ",
+                centered);
 
-            string[] tiers =
+            GUI.Label(
+                R(470, 345, 390, 60, scale),
+                $"№ {BureauEconomy.BureauRatingPosition}",
+                LabelStyle(38, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee));
+
+            GUI.Label(
+                R(470, 408, 390, 32, scale),
+                BureauEconomy.ReputationTitle,
+                LabelStyle(15, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee));
+
+            // Reputation cycle.
+            DrawNineSlice(
+                R(940, 275, 500, 185, scale),
+                folderPaperTexture,
+                20);
+
+            GUI.Label(
+                R(980, 300, 420, 38, scale),
+                "ДО ОСОБОГО КЛИЕНТА",
+                centered);
+
+            Rect barBack = R(995, 358, 390, 34, scale);
+            DrawNineSlice(barBack, buttonTexture, 12);
+
+            float innerWidth = 362f * BureauEconomy.ReputationProgress01;
+            if (innerWidth > 1f)
             {
-                "40 · Знакомое бюро",
-                "150 · Городское бюро",
-                "400 · Бюро с репутацией",
-                "800 · Экспертное бюро",
-                "1400 · Легендарное бюро"
-            };
-
-            for (int i = 0; i < tiers.Length; i++)
-            {
-                string prefix = BureauEconomy.ReputationTier >= i + 1
-                    ? "✓" : "○";
-
-                GUI.Label(R(495, 435 + i * 65, 1020, 55, scale),
-                    prefix + "  " + tiers[i], body);
+                GUI.DrawTexture(
+                    R(1009, 369, innerWidth, 12, scale),
+                    accentTexture,
+                    ScaleMode.StretchToFill,
+                    true);
             }
 
-            GUI.Label(R(460, 767, 1050, 63, scale),
-                "За повышение репутации вы получаете набор из четырёх бонусов. " +
-                "Правильные ответы дают больше очков.", body);
+            GUI.Label(
+                R(995, 398, 390, 34, scale),
+                $"{BureauEconomy.Reputation} / {BureauEconomy.ReputationTarget}",
+                centered);
 
-            if (GUI.Button(R(755, 862, 410, 66, scale),
-                "ВЕРНУТЬСЯ В БЮРО", button))
+            string status;
+            if (BureauEconomy.SpecialCaseActive)
+                status = "Особое дело уже активно. Успешно завершите его, чтобы подняться в рейтинге.";
+            else if (BureauEconomy.SpecialCasePending)
+                status = "Шкала заполнена. Следующий клиент будет особым.";
+            else
+                status = "Обычные дела заполняют шкалу репутации. Правильный вывод даёт +18, ошибка — +8.";
+
+            DrawNineSlice(
+                R(430, 505, 1010, 170, scale),
+                folderPaperTexture,
+                20);
+
+            GUI.Label(
+                R(475, 530, 920, 45, scale),
+                BureauEconomy.SpecialCaseActive
+                    ? "★ ОСОБОЕ ДЕЛО"
+                    : "КАК РАБОТАЕТ ПРОГРЕСС",
+                heading);
+
+            GUI.Label(
+                R(475, 585, 920, 62, scale),
+                status,
+                body);
+
+            GUI.Label(
+                R(455, 710, 970, 95, scale),
+                $"Завершено дел: {BureauEconomy.CompletedUniqueCases}     ·     " +
+                $"Успешных особых дел: {BureauEconomy.SpecialCasesCompleted}\n" +
+                "Особое дело сложнее обычного: цель Match-3 выше, ходов меньше. " +
+                "Успех улучшает место бюро в городском рейтинге.",
+                body);
+
+            if (GUI.Button(
+                R(755, 850, 410, 66, scale),
+                "ВЕРНУТЬСЯ В БЮРО",
+                button))
+            {
                 CloseOverlay();
+            }
         }
 
         private void StartMiniGame()
