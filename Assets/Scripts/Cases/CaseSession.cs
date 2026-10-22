@@ -294,6 +294,10 @@ namespace LostAndFound.Cases
             miniGameCompleted = false;
             pendingCluePopup = false;
             Save();
+
+            // If the previous ordinary case filled the reputation bar,
+            // this new client becomes the special ranking case.
+            BureauEconomy.PrepareNextCaseAfterAdvance();
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
