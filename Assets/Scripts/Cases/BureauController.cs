@@ -11,6 +11,7 @@ namespace LostAndFound.Cases
             ClientIntro,
             CaseDetails,
             Desk,
+            SearchPrep,
             CaseFile,
             Answers,
             Inquiry,
@@ -48,6 +49,13 @@ namespace LostAndFound.Cases
         private Vector2 puzzleDragOffset;
         private int enlargedPhotoIndex = -1;
         private Texture2D[] photoEvidenceImages = new Texture2D[0];
+
+        private bool prepBombSelected;
+        private bool prepPlaneSelected;
+        private bool prepColorSelected;
+        private Sprite prepBombSprite;
+        private Sprite prepPlaneSprite;
+        private Sprite prepColorSprite;
 
         private Texture2D officeBackground;
         private Texture2D clientImage;
@@ -199,6 +207,10 @@ namespace LostAndFound.Cases
                 MakeGearTexture(new Color(0.74f, 0.39f, 0.20f, 1f), 14, false),
                 MakeGearTexture(new Color(0.46f, 0.30f, 0.24f, 1f), 16, true)
             };
+
+            prepBombSprite = Resources.Load<Sprite>("Match3/Bonuses/Bomb");
+            prepPlaneSprite = Resources.Load<Sprite>("Match3/Bonuses/Plane");
+            prepColorSprite = Resources.Load<Sprite>("Match3/Bonuses/ColorClear");
 
             uiFont = Font.CreateDynamicFontFromOSFont(
                 new[] { "Segoe UI", "Arial" },
@@ -630,6 +642,9 @@ namespace LostAndFound.Cases
                 case BureauMode.Desk:
                     DrawDeskMode(scale);
                     break;
+                case BureauMode.SearchPrep:
+                    DrawSearchPrep(scale);
+                    break;
                 case BureauMode.CaseFile:
                     DrawCaseFile(scale);
                     break;
@@ -877,7 +892,16 @@ namespace LostAndFound.Cases
         private void BeginSearch()
         {
             CaseSession.MarkIntroSeen();
-            SceneManager.LoadScene("Match3");
+            OpenSearchPrep();
+        }
+
+        private void OpenSearchPrep()
+        {
+            previousMode = mode;
+            prepBombSelected = false;
+            prepPlaneSelected = false;
+            prepColorSelected = false;
+            mode = BureauMode.SearchPrep;
         }
 
         private void DrawInquiry(float scale)
@@ -948,6 +972,197 @@ namespace LostAndFound.Cases
             // in the middle of the desk. The player can open the case at any time
             // through one compact persistent button.
             DrawCaseAccessButton(scale);
+            DrawSearchButton(scale);
+        }
+
+        private void DrawSearchButton(float scale)
+        {
+            GUIStyle main = LabelStyle(
+                20, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.98f, 0.95f, 0.87f));
+            GUIStyle sub = LabelStyle(
+                12, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.96f, 0.88f, 0.70f));
+
+            Rect rect = R(1490, 800, 315, 78, scale);
+
+            if (CaseSession.CanPlayMatch3)
+            {
+                DrawNineSlice(rect, goodTexture, 24);
+                GUI.Label(R(1510, 810, 275, 30, scale), "ИСКАТЬ", main);
+                GUI.Label(
+                    R(1510, 842, 275, 22, scale),
+                    $"УРОВЕНЬ {CaseSession.CurrentMatch3LevelNumber}",
+                    sub);
+
+                GUIStyle invisible = new GUIStyle(GUIStyle.none);
+                if (GUI.Button(rect, GUIContent.none, invisible))
+                    OpenSearchPrep();
+            }
+            else
+            {
+                DrawNineSlice(rect, panelTexture, 24);
+                GUI.Label(R(1510, 817, 275, 30, scale), "ПОИСК ЗАВЕРШЁН", sub);
+            }
+        }
+
+        private void DrawSearchPrep(float scale)
+        {
+            GUI.DrawTexture(
+                new Rect(0f, 0f, Screen.width, Screen.height),
+                overlayTexture,
+                ScaleMode.StretchToFill);
+
+            Rect card = R(540, 105, 840, 855, scale);
+            DrawNineSlice(card, speechBubbleTexture, 30);
+
+            GUIStyle levelStyle = LabelStyle(
+                31, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.43f, 0.24f, 0.14f));
+            GUIStyle heading = LabelStyle(
+                20, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.43f, 0.24f, 0.14f));
+            GUIStyle body = LabelStyle(
+                16, FontStyle.Normal, TextAnchor.MiddleCenter, scale,
+                new Color(0.37f, 0.28f, 0.22f));
+            GUIStyle closeStyle = LabelStyle(
+                28, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.55f, 0.32f, 0.22f));
+            GUIStyle playStyle = LabelStyle(
+                24, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                Color.white);
+
+            DrawNineSlice(R(730, 78, 460, 88, scale), folderPaperTexture, 28);
+            GUI.Label(
+                R(760, 96, 400, 52, scale),
+                $"УРОВЕНЬ {CaseSession.CurrentMatch3LevelNumber}",
+                levelStyle);
+
+            Match3LevelDefinition level = CaseSession.CurrentLevel;
+            string levelInfo = level == null
+                ? ""
+                : $"Ходы: {level.Moves}   ·   Цель: {level.TargetCount}";
+
+            GUI.Label(R(675, 205, 570, 40, scale), levelInfo, body);
+            GUI.Label(R(670, 280, 580, 42, scale), "ВЫБЕРИТЕ БОНУСЫ", heading);
+            GUI.Label(
+                R(650, 325, 620, 36, scale),
+                "Бонусы расходуются только после нажатия «ИГРАТЬ».",
+                body);
+
+            DrawPrepBooster(
+                scale,
+                R(625, 395, 205, 255, scale),
+                "БОМБА",
+                "Bomb",
+                prepBombSprite,
+                ref prepBombSelected);
+
+            DrawPrepBooster(
+                scale,
+                R(858, 395, 205, 255, scale),
+                "САМОЛЁТИК",
+                "Plane",
+                prepPlaneSprite,
+                ref prepPlaneSelected);
+
+            DrawPrepBooster(
+                scale,
+                R(1091, 395, 205, 255, scale),
+                "ЦВЕТ",
+                "ColorClear",
+                prepColorSprite,
+                ref prepColorSelected);
+
+            Rect playRect = R(735, 735, 450, 82, scale);
+            DrawNineSlice(playRect, goodTexture, 26);
+            GUI.Label(playRect, "ИГРАТЬ", playStyle);
+
+            GUIStyle invisible = new GUIStyle(GUIStyle.none);
+            if (GUI.Button(playRect, GUIContent.none, invisible))
+            {
+                bool bomb = prepBombSelected &&
+                            BureauEconomy.TryUseBooster("Bomb");
+                bool plane = prepPlaneSelected &&
+                             BureauEconomy.TryUseBooster("Plane");
+                bool color = prepColorSelected &&
+                             BureauEconomy.TryUseBooster("ColorClear");
+
+                CaseSession.QueuePregameBoosters(bomb, plane, color);
+                SceneManager.LoadScene("Match3");
+            }
+
+            Rect closeRect = R(1295, 125, 52, 52, scale);
+            GUI.Label(closeRect, "×", closeStyle);
+            if (GUI.Button(closeRect, GUIContent.none, invisible))
+                mode = previousMode == BureauMode.SearchPrep
+                    ? BureauMode.Desk
+                    : previousMode;
+        }
+
+        private void DrawPrepBooster(
+            float scale,
+            Rect rect,
+            string title,
+            string id,
+            Sprite icon,
+            ref bool selected)
+        {
+            int count = BureauEconomy.BoosterCount(id);
+            bool available = count > 0;
+
+            Texture2D background = selected
+                ? goodTexture
+                : available
+                    ? folderPaperTexture
+                    : panelTexture;
+
+            DrawNineSlice(rect, background, 24);
+
+            if (icon != null)
+            {
+                float iconSize = 105f * scale;
+                GUI.DrawTexture(
+                    new Rect(
+                        rect.center.x - iconSize * 0.5f,
+                        rect.y + 25f * scale,
+                        iconSize,
+                        iconSize),
+                    icon.texture,
+                    ScaleMode.ScaleToFit,
+                    true);
+            }
+
+            Color textColor = available || selected
+                ? new Color(0.30f, 0.19f, 0.13f)
+                : new Color(0.68f, 0.66f, 0.61f);
+
+            if (selected)
+                textColor = Color.white;
+
+            GUIStyle titleStyle = LabelStyle(
+                16, FontStyle.Bold, TextAnchor.MiddleCenter, scale, textColor);
+            GUIStyle countStyle = LabelStyle(
+                14, FontStyle.Bold, TextAnchor.MiddleCenter, scale, textColor);
+
+            GUI.Label(
+                new Rect(rect.x + 10f * scale, rect.y + 145f * scale,
+                    rect.width - 20f * scale, 28f * scale),
+                title,
+                titleStyle);
+
+            GUI.Label(
+                new Rect(rect.x + 10f * scale, rect.y + 181f * scale,
+                    rect.width - 20f * scale, 28f * scale),
+                selected ? "ВЫБРАН" : $"× {count}",
+                countStyle);
+
+            if (!available)
+                return;
+
+            GUIStyle invisible = new GUIStyle(GUIStyle.none);
+            if (GUI.Button(rect, GUIContent.none, invisible))
+                selected = !selected;
         }
 
         private void DrawCaseAccessButton(float scale)
@@ -1109,7 +1324,7 @@ namespace LostAndFound.Cases
                     "ПРОДОЛЖИТЬ ПОИСК",
                     buttonStyle))
                 {
-                    SceneManager.LoadScene("Match3");
+                    OpenSearchPrep();
                 }
             }
         }
