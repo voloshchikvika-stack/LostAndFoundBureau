@@ -792,7 +792,6 @@ namespace LostAndFound.Cases
 
         private void DrawClientIntro(float scale)
         {
-            DrawCaseFolderOnDesk(scale, false);
             DrawSpeechBubble(
                 R(610, 115, 1060, 500, scale),
                 R(580, 510, 76, 64, scale),
@@ -937,137 +936,183 @@ namespace LostAndFound.Cases
                                responseIndex >= 0 && responseIndex < currentCase.ClueResponses.Length;
             string text = CaseSession.MiniGameCompleted
                 ? currentCase.RoomId == "PhotoLab"
-                    ? "На кадре из трамвая видна важная деталь! Давайте сравним " +
-                      "улику из поиска и результаты фотолаборатории в папке дела."
-                    : "Новое исследование завершено! Сравним находку из Match-3 " +
-                      "с результатом работы в отделе — обе улики уже в папке."
+                    ? "На кадре из трамвая видна важная деталь! Результат фотолаборатории " +
+                      "уже добавлен в материалы дела."
+                    : "Новое исследование завершено! Находка из Match-3 и результат " +
+                      "исследования уже добавлены в материалы дела."
                 : hasResponse
                     ? currentCase.ClueResponses[responseIndex]
-                    : "Удалось что-нибудь узнать? Новая информация должна быть в деле на столе.";
+                    : "Удалось что-нибудь узнать? Новая информация уже добавлена в материалы дела.";
 
             GUI.Label(R(705, 225, 750, 82, scale), text, bodyStyle);
 
-            // The active case is always on the desk, even before the first clue.
-            DrawCaseFolderOnDesk(scale, true);
+            // Keep the bureau screen clean: the physical folder no longer sits
+            // in the middle of the desk. The player can open the case at any time
+            // through one compact persistent button.
+            DrawCaseAccessButton(scale);
         }
 
-        private void DrawCaseFolderOnDesk(float scale, bool interactive)
+        private void DrawCaseAccessButton(float scale)
         {
-            Rect folderRect = R(710, 735, 500, 275, scale);
-
-            GUIStyle folderTitle = LabelStyle(
-                18, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                new Color(0.24f, 0.13f, 0.07f));
-            GUIStyle folderSmall = LabelStyle(
+            GUIStyle titleStyle = LabelStyle(
+                15, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.98f, 0.94f, 0.84f));
+            GUIStyle countStyle = LabelStyle(
                 13, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                new Color(0.37f, 0.23f, 0.12f));
+                new Color(0.98f, 0.90f, 0.72f));
 
-            if (caseFolderImage != null)
-            {
-                // The artist-provided PNG is now the actual case object.
-                // Nothing opaque is drawn behind it or over its centre.
-                GUI.DrawTexture(folderRect, caseFolderImage, ScaleMode.ScaleToFit, true);
+            Rect buttonRect = R(1490, 895, 315, 72, scale);
+            DrawNineSlice(buttonRect, buttonTexture, 22);
 
-                // Only a small unobtrusive status tag remains, so the custom
-                // folder artwork stays visible.
-                DrawNineSlice(R(810, 925, 300, 58, scale), folderPaperTexture, 16);
-                GUI.Label(R(825, 931, 270, 22, scale),
-                    $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
-                GUI.Label(R(825, 955, 270, 18, scale),
-                    $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
-                    folderSmall);
-            }
-            else
-            {
-                // Fallback for a case that has no folder PNG yet.
-                DrawNineSlice(folderRect, folderTexture, 18);
-                DrawNineSlice(R(790, 735, 340, 112, scale), folderPaperTexture, 18);
-                GUI.Label(R(810, 748, 300, 34, scale),
-                    $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}", folderTitle);
-                GUI.Label(R(810, 787, 300, 28, scale),
-                    currentCase.LostItemName, folderSmall);
-                GUI.Label(R(810, 818, 300, 25, scale),
-                    $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
-                    folderSmall);
-            }
+            GUI.Label(R(1510, 904, 275, 27, scale), "ДЕЛО", titleStyle);
+            GUI.Label(
+                R(1510, 932, 275, 24, scale),
+                $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
+                countStyle);
 
-            if (!interactive)
-                return;
-
-            // The folder itself is the clickable object. No large button is
-            // painted over it anymore.
-            GUIStyle invisibleButton = new GUIStyle(GUIStyle.none);
-            if (GUI.Button(folderRect, GUIContent.none, invisibleButton))
+            GUIStyle invisible = new GUIStyle(GUIStyle.none);
+            if (GUI.Button(buttonRect, GUIContent.none, invisible))
                 mode = BureauMode.CaseFile;
-
-            GUIStyle hintStyle = LabelStyle(
-                12, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                new Color(0.36f, 0.22f, 0.13f, 0.88f));
-            GUI.Label(R(825, 992, 270, 20, scale), "НАЖМИТЕ НА ПАПКУ", hintStyle);
         }
 
         private void DrawCaseFile(float scale)
         {
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), overlayTexture, ScaleMode.StretchToFill);
-            GUI.DrawTexture(R(225, 85, 1470, 900, scale), folderTexture, ScaleMode.StretchToFill, true);
-            GUI.DrawTexture(R(285, 145, 1350, 770, scale), folderPaperTexture, ScaleMode.StretchToFill, true);
+            GUI.DrawTexture(
+                new Rect(0, 0, Screen.width, Screen.height),
+                overlayTexture,
+                ScaleMode.StretchToFill);
 
-            GUIStyle titleStyle = LabelStyle(33, FontStyle.Bold, TextAnchor.MiddleLeft, scale, new Color(0.24f, 0.13f, 0.07f));
-            GUIStyle subtitleStyle = LabelStyle(17, FontStyle.Bold, TextAnchor.MiddleLeft, scale, new Color(0.46f, 0.29f, 0.14f));
-            GUIStyle clueStyle = LabelStyle(19, FontStyle.Normal, TextAnchor.UpperLeft, scale, new Color(0.20f, 0.15f, 0.11f));
-            GUIStyle clueHeaderStyle = LabelStyle(17, FontStyle.Bold, TextAnchor.MiddleLeft, scale, new Color(0.42f, 0.24f, 0.10f));
-            GUIStyle buttonStyle = ButtonStyle(18, scale);
+            // Clean case viewer: one large paper surface, no oversized cardboard
+            // folder graphic. The evidence itself is the visual focus.
+            Rect sheet = R(260, 90, 1400, 900, scale);
+            DrawNineSlice(sheet, speechBubbleTexture, 28);
 
-            GUI.Label(R(345, 180, 850, 48, scale), $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}: {currentCase.LostItemName}", titleStyle);
-            GUI.Label(R(345, 228, 850, 30, scale), $"Клиент: {currentCase.ClientName}", subtitleStyle);
+            Color ink = new Color(0.22f, 0.15f, 0.11f);
+            Color coffee = new Color(0.48f, 0.30f, 0.18f);
+            Color muted = new Color(0.43f, 0.36f, 0.29f);
+
+            GUIStyle titleStyle = LabelStyle(
+                31, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle subtitleStyle = LabelStyle(
+                16, FontStyle.Bold, TextAnchor.MiddleLeft, scale, coffee);
+            GUIStyle progressStyle = LabelStyle(
+                15, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee);
+            GUIStyle clueTitleStyle = LabelStyle(
+                16, FontStyle.Bold, TextAnchor.MiddleLeft, scale, coffee);
+            GUIStyle clueStyle = LabelStyle(
+                18, FontStyle.Normal, TextAnchor.UpperLeft, scale, ink);
+            GUIStyle emptyStyle = LabelStyle(
+                19, FontStyle.Normal, TextAnchor.MiddleCenter, scale, muted);
+            GUIStyle buttonStyle = ButtonStyle(17, scale);
+
+            GUI.Label(
+                R(330, 145, 900, 48, scale),
+                $"ДЕЛО №{CaseSession.CurrentCaseIndex + 1:00}",
+                titleStyle);
+            GUI.Label(
+                R(330, 194, 900, 30, scale),
+                currentCase.LostItemName.ToUpperInvariant(),
+                subtitleStyle);
+            GUI.Label(
+                R(330, 226, 900, 26, scale),
+                $"Клиент: {currentCase.ClientName}",
+                subtitleStyle);
+
+            DrawNineSlice(R(1325, 142, 245, 54, scale), folderPaperTexture, 16);
+            GUI.Label(
+                R(1340, 154, 215, 28, scale),
+                $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
+                progressStyle);
+
+            GUI.DrawTexture(R(330, 272, 1240, 2, scale), accentTexture);
 
             if (lostItemImage != null)
-                GUI.DrawTexture(R(1260, 170, 280, 205, scale), lostItemImage, ScaleMode.ScaleToFit, true);
+            {
+                DrawNineSlice(R(1305, 300, 265, 220, scale), folderPaperTexture, 18);
+                GUI.DrawTexture(
+                    R(1323, 318, 229, 184, scale),
+                    lostItemImage,
+                    ScaleMode.ScaleToFit,
+                    true);
+            }
 
-            float clueY = 305f;
+            float clueX = 330f;
+            float clueY = 315f;
+            float clueWidth = 900f;
+            float clueHeight = 145f;
 
             if (CaseSession.CollectedEvidenceCount == 0)
             {
-                GUIStyle emptyStyle = LabelStyle(
-                    20, FontStyle.Normal, TextAnchor.MiddleCenter, scale,
-                    new Color(0.38f, 0.27f, 0.18f));
-
+                DrawNineSlice(
+                    R(clueX, clueY, clueWidth, 300, scale),
+                    folderPaperTexture,
+                    22);
                 GUI.Label(
-                    R(420, 405, 1080, 100, scale),
-                    "Улик пока нет. Начните поиск, чтобы добавить первую улику в дело.",
+                    R(clueX + 55, clueY + 80, clueWidth - 110, 130, scale),
+                    "Улик пока нет. Продолжайте расследование — найденные материалы будут появляться здесь автоматически.",
                     emptyStyle);
-            }
-
-            for (int i = 0; i < CaseSession.CollectedEvidenceCount; i++)
-            {
-                string clue = CaseSession.GetCollectedEvidenceText(i);
-                string source = CaseSession.GetCollectedEvidenceSource(i);
-
-                GUI.DrawTexture(R(345, clueY, 1210, 150, scale), paperTexture, ScaleMode.StretchToFill, true);
-                GUI.Label(R(375, clueY + 12, 1130, 28, scale),
-                    $"УЛИКА {i + 1} · {source}", clueHeaderStyle);
-                GUI.Label(R(375, clueY + 44, 1130, 92, scale), clue, clueStyle);
-                clueY += 166f;
-            }
-
-            if (GUI.Button(R(345, 835, 245, 58, scale), "ЗАКРЫТЬ ДЕЛО", buttonStyle))
-                mode = BureauMode.Desk;
-
-            if (CaseSession.MiniGameReady)
-            {
-                if (GUI.Button(R(960, 835, 595, 58, scale),
-                    "ПЕРЕЙТИ: " + RoomName(currentCase.RoomId).ToUpperInvariant(), buttonStyle))
-                    StartMiniGame();
-            }
-            else if (CaseSession.HasAllClues)
-            {
-                if (GUI.Button(R(1175, 835, 380, 58, scale), "СДЕЛАТЬ ВЫВОД", buttonStyle))
-                    mode = BureauMode.Answers;
             }
             else
             {
-                if (GUI.Button(R(1080, 835, 475, 58, scale), "ПРОДОЛЖИТЬ ПОИСК", buttonStyle))
+                for (int i = 0; i < CaseSession.CollectedEvidenceCount; i++)
+                {
+                    string clue = CaseSession.GetCollectedEvidenceText(i);
+                    string source = CaseSession.GetCollectedEvidenceSource(i);
+
+                    DrawNineSlice(
+                        R(clueX, clueY, clueWidth, clueHeight, scale),
+                        folderPaperTexture,
+                        18);
+                    GUI.Label(
+                        R(clueX + 28, clueY + 14, clueWidth - 56, 26, scale),
+                        $"УЛИКА {i + 1}  ·  {source}",
+                        clueTitleStyle);
+                    GUI.Label(
+                        R(clueX + 28, clueY + 48, clueWidth - 56, 78, scale),
+                        clue,
+                        clueStyle);
+
+                    clueY += 160f;
+                }
+            }
+
+            if (GUI.Button(
+                R(330, 890, 235, 58, scale),
+                "ЗАКРЫТЬ",
+                buttonStyle))
+            {
+                mode = BureauMode.Desk;
+            }
+
+            if (CaseSession.MiniGameReady)
+            {
+                if (GUI.Button(
+                    R(1010, 890, 560, 58, scale),
+                    "ИССЛЕДОВАТЬ УЛИКУ",
+                    buttonStyle))
+                {
+                    StartMiniGame();
+                }
+            }
+            else if (CaseSession.HasAllClues)
+            {
+                if (GUI.Button(
+                    R(1190, 890, 380, 58, scale),
+                    "СДЕЛАТЬ ВЫВОД",
+                    buttonStyle))
+                {
+                    mode = BureauMode.Answers;
+                }
+            }
+            else
+            {
+                if (GUI.Button(
+                    R(1095, 890, 475, 58, scale),
+                    "ПРОДОЛЖИТЬ ПОИСК",
+                    buttonStyle))
+                {
                     SceneManager.LoadScene("Match3");
+                }
             }
         }
 
