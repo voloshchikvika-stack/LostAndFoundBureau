@@ -1568,30 +1568,61 @@ namespace LostAndFound.Cases
                 scale, new Color(0.25f, 0.17f, 0.11f));
             GUIStyle button = ButtonStyle(17, scale);
 
-            // Reputation is a real progress bar now, not just a number.
-            Rect repRect = R(1015, 20, 280, 58, scale);
-            DrawNineSlice(repRect, buttonTexture, 22);
+            // Large centered reputation bar, matching the mobile HUD reference:
+            // title on the left, current/target on the right, progress underneath.
+            Rect repRect = R(615, 18, 690, 82, scale);
+            DrawNineSlice(repRect, buttonTexture, 26);
 
-            float fillWidth = 244f * BureauEconomy.ReputationProgress01;
-            if (fillWidth > 1f)
+            Color cream = new Color(1f, 0.94f, 0.78f);
+            GUIStyle repTitle = LabelStyle(
+                18, FontStyle.Bold, TextAnchor.MiddleLeft, scale, cream);
+            GUIStyle repValue = LabelStyle(
+                18, FontStyle.Bold, TextAnchor.MiddleRight, scale, cream);
+
+            GUI.Label(
+                R(650, 27, 310, 28, scale),
+                "РЕПУТАЦИЯ",
+                repTitle);
+
+            GUI.Label(
+                R(970, 27, 300, 28, scale),
+                $"{BureauEconomy.Reputation}/{BureauEconomy.ReputationTarget}",
+                repValue);
+
+            Rect trackRect = R(650, 62, 620, 18, scale);
+            DrawNineSlice(trackRect, panelStrongTexture, 9);
+
+            float fillWidth = 620f * BureauEconomy.ReputationProgress01;
+            if (fillWidth > 3f)
             {
-                GUI.DrawTexture(
-                    R(1033, 57, fillWidth, 9, scale),
-                    accentTexture,
-                    ScaleMode.StretchToFill,
-                    true);
+                Rect fillRect = R(650, 62, fillWidth, 18, scale);
+
+                if (fillWidth >= 24f)
+                    DrawNineSlice(fillRect, folderPaperTexture, 9);
+                else
+                    GUI.DrawTexture(
+                        fillRect,
+                        folderPaperTexture,
+                        ScaleMode.StretchToFill,
+                        true);
             }
 
-            string reputationLabel = BureauEconomy.SpecialCaseActive
-                ? "★ ОСОБОЕ ДЕЛО"
-                : BureauEconomy.SpecialCasePending
-                    ? "★ ОСОБЫЙ КЛИЕНТ"
-                    : $"РЕПУТАЦИЯ {BureauEconomy.Reputation}/{BureauEconomy.ReputationTarget}";
+            if (BureauEconomy.SpecialCasePending ||
+                BureauEconomy.SpecialCaseActive)
+            {
+                string specialText = BureauEconomy.SpecialCaseActive
+                    ? "★ ОСОБОЕ ДЕЛО"
+                    : "★ ОСОБЫЙ КЛИЕНТ";
 
-            GUIStyle repText = LabelStyle(
-                14, FontStyle.Bold, TextAnchor.MiddleCenter,
-                scale, new Color(1f, 0.96f, 0.89f));
-            GUI.Label(R(1028, 28, 254, 27, scale), reputationLabel, repText);
+                GUIStyle specialStyle = LabelStyle(
+                    11, FontStyle.Bold, TextAnchor.MiddleCenter,
+                    scale, new Color(0.29f, 0.18f, 0.12f));
+
+                GUI.Label(
+                    R(800, 61, 320, 19, scale),
+                    specialText,
+                    specialStyle);
+            }
 
             GUIStyle invisible = new GUIStyle(GUIStyle.none);
             if (GUI.Button(repRect, GUIContent.none, invisible))
