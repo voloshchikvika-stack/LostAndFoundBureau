@@ -92,6 +92,7 @@ namespace LostAndFound.Cases
         private float cluePopupUntil;
 
         private bool reactionVisible;
+        private bool returnedFromSearch;
         private bool reactionWasCorrect;
         private int reactionStage;
         private float reactionUntil;
@@ -112,9 +113,12 @@ namespace LostAndFound.Cases
 
             if (CaseSession.TryConsumePendingClue(out _))
             {
-                cluePopupVisible = true;
-                cluePopupUntil = Time.realtimeSinceStartup + 2.0f;
-                mode = BureauMode.Desk;
+                // Never throw the player back to the bureau between investigation
+                // steps. Continue directly from the same investigation card.
+                returnedFromSearch = true;
+                cluePopupVisible = false;
+                previousMode = BureauMode.Desk;
+                mode = BureauMode.SearchPrep;
             }
             else
             {
@@ -897,7 +901,8 @@ namespace LostAndFound.Cases
 
         private void OpenSearchPrep()
         {
-            previousMode = mode;
+            previousMode = BureauMode.Desk;
+            returnedFromSearch = false;
             prepBombSelected = false;
             prepPlaneSelected = false;
             prepColorSelected = false;
@@ -1016,43 +1021,144 @@ namespace LostAndFound.Cases
             Rect card = R(540, 105, 840, 855, scale);
             DrawNineSlice(card, speechBubbleTexture, 30);
 
+            Color coffee = new Color(0.43f, 0.24f, 0.14f);
+            Color bodyInk = new Color(0.37f, 0.28f, 0.22f);
+
             GUIStyle levelStyle = LabelStyle(
-                31, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                new Color(0.43f, 0.24f, 0.14f));
+                31, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee);
             GUIStyle heading = LabelStyle(
-                20, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                new Color(0.43f, 0.24f, 0.14f));
+                22, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee);
             GUIStyle body = LabelStyle(
-                16, FontStyle.Normal, TextAnchor.MiddleCenter, scale,
-                new Color(0.37f, 0.28f, 0.22f));
+                16, FontStyle.Normal, TextAnchor.MiddleCenter, scale, bodyInk);
             GUIStyle closeStyle = LabelStyle(
                 28, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
                 new Color(0.55f, 0.32f, 0.22f));
-            GUIStyle playStyle = LabelStyle(
-                24, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
-                Color.white);
+            GUIStyle actionStyle = LabelStyle(
+                23, FontStyle.Bold, TextAnchor.MiddleCenter, scale, Color.white);
+            GUIStyle smallTitle = LabelStyle(
+                15, FontStyle.Bold, TextAnchor.MiddleCenter, scale,
+                new Color(0.50f, 0.31f, 0.18f));
 
+            GUIStyle invisible = new GUIStyle(GUIStyle.none);
+
+            Rect closeRect = R(1295, 125, 52, 52, scale);
+            GUI.Label(closeRect, "×", closeStyle);
+            if (GUI.Button(closeRect, GUIContent.none, invisible))
+            {
+                returnedFromSearch = false;
+                mode = BureauMode.Desk;
+                return;
+            }
+
+            // STATE 1: all investigation material is ready.
+            if (CaseSession.HasAllClues)
+            {
+                DrawNineSlice(R(730, 78, 460, 88, scale), goodTexture, 28);
+                GUI.Label(
+                    R(760, 95, 400, 52, scale),
+                    "ДЕЛО ГОТОВО",
+                    LabelStyle(28, FontStyle.Bold, TextAnchor.MiddleCenter, scale, Color.white));
+
+                GUI.Label(
+                    R(650, 260, 620, 48, scale),
+                    "ПОРА ЗАВЕРШИТЬ ДЕЛО",
+                    heading);
+
+                GUI.Label(
+                    R(665, 335, 590, 115, scale),
+                    "Все необходимые материалы собраны. Перед выводом просмотрите найденные улики и результаты исследований.",
+                    body);
+
+                GUI.Label(
+                    R(675, 500, 570, 36, scale),
+                    $"СОБРАНО УЛИК: {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
+                    smallTitle);
+
+                Rect evidenceRect = R(735, 690, 450, 86, scale);
+                DrawNineSlice(evidenceRect, goodTexture, 26);
+                GUI.Label(evidenceRect, "ПЕРЕЙТИ К УЛИКАМ", actionStyle);
+
+                if (GUI.Button(evidenceRect, GUIContent.none, invisible))
+                {
+                    returnedFromSearch = false;
+                    mode = BureauMode.CaseFile;
+                }
+
+                return;
+            }
+
+            // STATE 2: a room investigation / puzzle is now required.
+            if (CaseSession.MiniGameReady)
+            {
+                DrawNineSlice(R(730, 78, 460, 88, scale), folderPaperTexture, 28);
+                GUI.Label(
+                    R(760, 95, 400, 52, scale),
+                    returnedFromSearch ? "НОВАЯ УЛИКА" : "ИССЛЕДОВАНИЕ",
+                    levelStyle);
+
+                GUI.Label(
+                    R(645, 245, 630, 55, scale),
+                    "НУЖНО ИССЛЕДОВАТЬ НАХОДКУ",
+                    heading);
+
+                GUI.Label(
+                    R(655, 325, 610, 92, scale),
+                    currentCase.MiniGameTitle,
+                    LabelStyle(20, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee));
+
+                GUI.Label(
+                    R(665, 435, 590, 100, scale),
+                    $"Следующий шаг расследования проходит в отделе «{RoomName(currentCase.RoomId)}».",
+                    body);
+
+                GUI.Label(
+                    R(675, 550, 570, 36, scale),
+                    $"УЛИКИ {CaseSession.CollectedEvidenceCount}/{CaseSession.RequiredEvidenceCount}",
+                    smallTitle);
+
+                Rect puzzleRect = R(710, 690, 500, 86, scale);
+                DrawNineSlice(puzzleRect, goodTexture, 26);
+                GUI.Label(puzzleRect, "ПЕРЕЙТИ К ГОЛОВОЛОМКЕ", actionStyle);
+
+                if (GUI.Button(puzzleRect, GUIContent.none, invisible))
+                {
+                    returnedFromSearch = false;
+                    StartMiniGame();
+                }
+
+                return;
+            }
+
+            // STATE 3: another Match-3 level is next.
             DrawNineSlice(R(730, 78, 460, 88, scale), folderPaperTexture, 28);
             GUI.Label(
                 R(760, 96, 400, 52, scale),
                 $"УРОВЕНЬ {CaseSession.CurrentMatch3LevelNumber}",
                 levelStyle);
 
+            if (returnedFromSearch)
+            {
+                GUI.Label(
+                    R(670, 185, 580, 34, scale),
+                    "УЛИКА ПОЛУЧЕНА · ПРОДОЛЖАЕМ ПОИСК",
+                    smallTitle);
+            }
+
             Match3LevelDefinition level = CaseSession.CurrentLevel;
             string levelInfo = level == null
                 ? ""
                 : $"Ходы: {level.Moves}   ·   Цель: {level.TargetCount}";
 
-            GUI.Label(R(675, 205, 570, 40, scale), levelInfo, body);
-            GUI.Label(R(670, 280, 580, 42, scale), "ВЫБЕРИТЕ БОНУСЫ", heading);
+            GUI.Label(R(675, 230, 570, 40, scale), levelInfo, body);
+            GUI.Label(R(670, 300, 580, 42, scale), "ВЫБЕРИТЕ БОНУСЫ", heading);
             GUI.Label(
-                R(650, 325, 620, 36, scale),
+                R(650, 345, 620, 36, scale),
                 "Бонусы расходуются только после нажатия «ИГРАТЬ».",
                 body);
 
             DrawPrepBooster(
                 scale,
-                R(625, 395, 205, 255, scale),
+                R(625, 405, 205, 240, scale),
                 "БОМБА",
                 "Bomb",
                 prepBombSprite,
@@ -1060,7 +1166,7 @@ namespace LostAndFound.Cases
 
             DrawPrepBooster(
                 scale,
-                R(858, 395, 205, 255, scale),
+                R(858, 405, 205, 240, scale),
                 "САМОЛЁТИК",
                 "Plane",
                 prepPlaneSprite,
@@ -1068,7 +1174,7 @@ namespace LostAndFound.Cases
 
             DrawPrepBooster(
                 scale,
-                R(1091, 395, 205, 255, scale),
+                R(1091, 405, 205, 240, scale),
                 "ЦВЕТ",
                 "ColorClear",
                 prepColorSprite,
@@ -1076,9 +1182,8 @@ namespace LostAndFound.Cases
 
             Rect playRect = R(735, 735, 450, 82, scale);
             DrawNineSlice(playRect, goodTexture, 26);
-            GUI.Label(playRect, "ИГРАТЬ", playStyle);
+            GUI.Label(playRect, "ИГРАТЬ", actionStyle);
 
-            GUIStyle invisible = new GUIStyle(GUIStyle.none);
             if (GUI.Button(playRect, GUIContent.none, invisible))
             {
                 bool bomb = prepBombSelected &&
@@ -1089,15 +1194,9 @@ namespace LostAndFound.Cases
                              BureauEconomy.TryUseBooster("ColorClear");
 
                 CaseSession.QueuePregameBoosters(bomb, plane, color);
+                returnedFromSearch = false;
                 SceneManager.LoadScene("Match3");
             }
-
-            Rect closeRect = R(1295, 125, 52, 52, scale);
-            GUI.Label(closeRect, "×", closeStyle);
-            if (GUI.Button(closeRect, GUIContent.none, invisible))
-                mode = previousMode == BureauMode.SearchPrep
-                    ? BureauMode.Desk
-                    : previousMode;
         }
 
         private void DrawPrepBooster(
@@ -2001,7 +2100,7 @@ namespace LostAndFound.Cases
                 return;
 
             activeRoomId = currentCase.RoomId;
-            roomReturnMode = BureauMode.CaseFile;
+            roomReturnMode = BureauMode.SearchPrep;
             temporaryRoomAccess = false;
             mode = BureauMode.MiniGame;
             miniGameStep = 0;
@@ -2082,8 +2181,19 @@ namespace LostAndFound.Cases
             }
 
             if (GUI.Button(R(755, 940, 410, 59, scale),
-                solved ? "ПРОЧИТАТЬ УЛИКИ В ДЕЛЕ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
-                mode = BureauMode.CaseFile;
+                solved ? "ПРОДОЛЖИТЬ РАССЛЕДОВАНИЕ" : "ЗАКРЫТЬ ЗАДАНИЕ", button))
+            {
+                if (solved)
+                {
+                    previousMode = BureauMode.Desk;
+                    returnedFromSearch = false;
+                    mode = BureauMode.SearchPrep;
+                }
+                else
+                {
+                    mode = BureauMode.CaseFile;
+                }
+            }
         }
 
         private string BuildEquipmentHint(int tier)
