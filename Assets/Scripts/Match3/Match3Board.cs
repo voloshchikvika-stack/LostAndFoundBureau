@@ -122,6 +122,54 @@ namespace LostAndFound.Match3
             ConfigureCamera();
             CreateRuntimeVisuals();
             CreateBoardWithoutStartingMatches();
+            ApplyPregameBoosters();
+        }
+
+        private void ApplyPregameBoosters()
+        {
+            CaseSession.ConsumePregameBoosters(
+                out bool addBomb,
+                out bool addPlane,
+                out bool addColorClear);
+
+            if (!addBomb && !addPlane && !addColorClear)
+                return;
+
+            List<Match3Piece> candidates = new List<Match3Piece>();
+
+            for (int row = 0; row < height; row++)
+            {
+                for (int column = 0; column < width; column++)
+                {
+                    Match3Piece piece = pieces[column, row];
+                    if (piece != null && !piece.IsBonus)
+                        candidates.Add(piece);
+                }
+            }
+
+            void Place(Match3BonusKind kind)
+            {
+                if (candidates.Count == 0)
+                    return;
+
+                int index = Random.Range(0, candidates.Count);
+                Match3Piece piece = candidates[index];
+                candidates.RemoveAt(index);
+
+                piece.SetBonus(
+                    kind,
+                    GetBonusSprite(kind),
+                    cellSize * 0.90f);
+            }
+
+            if (addBomb)
+                Place(Match3BonusKind.Bomb);
+
+            if (addPlane)
+                Place(Match3BonusKind.Plane);
+
+            if (addColorClear)
+                Place(Match3BonusKind.ColorClear);
         }
 
         private void Update()
