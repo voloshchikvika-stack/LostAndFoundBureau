@@ -15,6 +15,12 @@ namespace LostAndFound.Cases
         private static bool pendingCluePopup;
         private static bool allCasesCompleted;
 
+        // One-shot boosters selected on the pre-level screen. They survive the
+        // scene change into Match3 and are consumed by Match3Board.Start().
+        private static bool queuedBomb;
+        private static bool queuedPlane;
+        private static bool queuedColorClear;
+
         public static int CurrentCaseIndex => currentCaseIndex;
         // Match-3 clues and a completed room investigation are separate,
         // permanent pieces of evidence in the current case file.
@@ -37,6 +43,27 @@ namespace LostAndFound.Cases
         }
         public static bool AllCasesCompleted => allCasesCompleted;
         public static bool HasActiveCase => !allCasesCompleted && CurrentCase != null;
+        public static bool CanPlayMatch3 =>
+            CurrentCase != null && completedClues < CurrentCase.RequiredClues;
+
+        public static int CurrentMatch3LevelNumber
+        {
+            get
+            {
+                EnsureInitialized();
+
+                int number = 1;
+
+                for (int i = 0; i < currentCaseIndex; i++)
+                {
+                    CaseDefinition previous = CaseDatabase.GetCase(i);
+                    if (previous != null && previous.Levels != null)
+                        number += previous.Levels.Length;
+                }
+
+                return number + completedClues;
+            }
+        }
 
         public static CaseDefinition CurrentCase
         {
@@ -174,6 +201,30 @@ namespace LostAndFound.Cases
             Save();
         }
 
+        public static void QueuePregameBoosters(
+            bool bomb,
+            bool plane,
+            bool colorClear)
+        {
+            queuedBomb = bomb;
+            queuedPlane = plane;
+            queuedColorClear = colorClear;
+        }
+
+        public static void ConsumePregameBoosters(
+            out bool bomb,
+            out bool plane,
+            out bool colorClear)
+        {
+            bomb = queuedBomb;
+            plane = queuedPlane;
+            colorClear = queuedColorClear;
+
+            queuedBomb = false;
+            queuedPlane = false;
+            queuedColorClear = false;
+        }
+
         public static void CompleteCurrentSearch()
         {
             EnsureInitialized();
@@ -207,6 +258,9 @@ namespace LostAndFound.Cases
 
             clueText = currentCase.Clues[lastClueIndex];
             pendingCluePopup = false;
+            queuedBomb = false;
+            queuedPlane = false;
+            queuedColorClear = false;
             Save();
             return true;
         }
