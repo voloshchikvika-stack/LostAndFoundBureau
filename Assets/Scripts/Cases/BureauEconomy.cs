@@ -104,7 +104,7 @@ namespace LostAndFound.Cases
         {
             get
             {
-                MigrateLegacyReputation();
+                MigrateProgressionV3();
                 return PlayerPrefs.GetInt(Prefix + "Reputation", 0);
             }
         }
@@ -113,53 +113,89 @@ namespace LostAndFound.Cases
         {
             get
             {
-                MigrateLegacyReputation();
+                MigrateProgressionV3();
                 return PlayerPrefs.GetInt(Prefix + "CompletedCases", 0);
             }
         }
 
-        private static int TierForPoints(int reputation)
+        public static int SpecialCasesCompleted
         {
-            if (reputation >= 1400) return 5;
-            if (reputation >= 800) return 4;
-            if (reputation >= 400) return 3;
-            if (reputation >= 150) return 2;
-            if (reputation >= 40) return 1;
-            return 0;
+            get
+            {
+                MigrateProgressionV3();
+                return PlayerPrefs.GetInt(Prefix + "SpecialCasesCompleted", 0);
+            }
         }
 
-        public static int ReputationTier => TierForPoints(Reputation);
+        public static int BureauRatingPosition
+        {
+            get
+            {
+                MigrateProgressionV3();
+                return PlayerPrefs.GetInt(Prefix + "RatingPosition", 50);
+            }
+        }
+
+        public static bool SpecialCasePending
+        {
+            get
+            {
+                MigrateProgressionV3();
+                return PlayerPrefs.GetInt(Prefix + "SpecialPending", 0) == 1;
+            }
+        }
+
+        public static bool SpecialCaseActive
+        {
+            get
+            {
+                MigrateProgressionV3();
+                return PlayerPrefs.GetInt(Prefix + "SpecialActive", 0) == 1;
+            }
+        }
+
+        // Reputation is now a repeating progress bar. After every successful
+        // special case the next bar becomes slightly longer, up to a sane cap.
+        public static int ReputationTarget =>
+            Mathf.Min(120, 40 + SpecialCasesCompleted * 15);
+
+        public static float ReputationProgress01 =>
+            ReputationTarget <= 0
+                ? 0f
+                : Mathf.Clamp01(Reputation / (float)ReputationTarget);
+
+        // Kept for older UI helpers: tiers now represent how many ranking
+        // milestones the bureau has passed, not lifetime reputation points.
+        public static int ReputationTier =>
+            Mathf.Clamp(SpecialCasesCompleted, 0, 5);
 
         public static string ReputationTitle
         {
             get
             {
-                switch (ReputationTier)
-                {
-                    case 1: return "Знакомое бюро";
-                    case 2: return "Городское бюро";
-                    case 3: return "Бюро с репутацией";
-                    case 4: return "Экспертное бюро";
-                    case 5: return "Легендарное бюро";
-                    default: return "Маленькое бюро";
-                }
+                int rating = BureauRatingPosition;
+                if (rating <= 5) return "Одно из лучших бюро";
+                if (rating <= 15) return "Известное городское бюро";
+                if (rating <= 30) return "Бюро с репутацией";
+                if (rating <= 40) return "Набирающее известность бюро";
+                return "Небольшое городское бюро";
             }
         }
 
-        public static int NextReputationTarget
+        public static int NextReputationTarget => ReputationTarget;
+
+        // Called only after CaseSession has moved to the next client.
+        // A filled reputation bar turns that next client into a special case.
+        public static void PrepareNextCaseAfterAdvance()
         {
-            get
-            {
-                switch (ReputationTier)
-                {
-                    case 0: return 40;
-                    case 1: return 150;
-                    case 2: return 400;
-                    case 3: return 800;
-                    case 4: return 1400;
-                    default: return 1400;
-                }
-            }
+            MigrateProgressionV3();
+
+            if (!SpecialCasePending || SpecialCaseActive)
+                return;
+
+            PlayerPrefs.SetInt(Prefix + "SpecialPending", 0);
+            PlayerPrefs.SetInt(Prefix + "SpecialActive", 1);
+            PlayerPrefs.Save();
         }
 
         public static bool Owns(string roomId)
@@ -283,30 +319,57 @@ namespace LostAndFound.Cases
             if (CaseResult(caseId) != 0)
                 return 0;
 
-            MigrateLegacyReputation();
-            int reward = correct ? 150 : 100;
-            int reputationGain = correct ? 18 : 8;
+            MigrateProgressionV3();
 
-            int previousReputation = Reputation;
-            int nextReputation = previousReputation + reputationGain;
-            int oldTier = TierForPoints(previousReputation);
-            int newTier = TierForPoints(nextReputation);
+            bool special = SpecialCaseActive;
+            int reward = special
+                ? (correct ? 260 : 140)
+                : (correct ? 150 : 100);
 
             PlayerPrefs.SetInt(Prefix + "Result." + caseId, correct ? 1 : -1);
             PlayerPrefs.SetInt(Prefix + "Coins", Coins + reward);
-            PlayerPrefs.SetInt(Prefix + "Reputation", nextReputation);
             PlayerPrefs.SetInt(Prefix + "CompletedCases", CompletedUniqueCases + 1);
 
-            // Reputation milestones award expendable booster packs, instead of
-            // more rooms. One pack per reached rank (including skipped ranks).
-            for (int level = oldTier + 1; level <= newTier; level++)
+            if (special)
             {
-                string[] prizes = { "Moves5", "Bomb", "Plane", "ColorClear" };
-                foreach (string prize in prizes)
+                // A special case closes the current reputation cycle.
+                // Only a successful conclusion improves the city ranking.
+                if (correct)
                 {
-                    PlayerPrefs.SetInt(Prefix + "Booster." + prize,
-                        BoosterCount(prize) + 1);
+                    int previousPosition = BureauRatingPosition;
+                    int improvement = previousPosition > 25 ? 5 :
+                                      previousPosition > 10 ? 3 : 1;
+                    PlayerPrefs.SetInt(
+                        Prefix + "RatingPosition",
+                        Mathf.Max(1, previousPosition - improvement));
+                    PlayerPrefs.SetInt(
+                        Prefix + "SpecialCasesCompleted",
+                        SpecialCasesCompleted + 1);
+
+                    // Special clients award a small booster pack as a clear
+                    // celebration reward.
+                    foreach (string prize in new[] { "Moves5", "Bomb", "Plane", "ColorClear" })
+                    {
+                        PlayerPrefs.SetInt(
+                            Prefix + "Booster." + prize,
+                            BoosterCount(prize) + 1);
+                    }
                 }
+
+                PlayerPrefs.SetInt(Prefix + "Reputation", 0);
+                PlayerPrefs.SetInt(Prefix + "SpecialActive", 0);
+                PlayerPrefs.SetInt(Prefix + "SpecialPending", 0);
+            }
+            else
+            {
+                int gain = correct ? 18 : 8;
+                int target = ReputationTarget;
+                int next = Mathf.Min(target, Reputation + gain);
+
+                PlayerPrefs.SetInt(Prefix + "Reputation", next);
+
+                if (next >= target)
+                    PlayerPrefs.SetInt(Prefix + "SpecialPending", 1);
             }
 
             PlayerPrefs.Save();
@@ -351,26 +414,52 @@ namespace LostAndFound.Cases
             }
         }
 
-        private static void MigrateLegacyReputation()
+        private static void MigrateProgressionV3()
         {
-            if (PlayerPrefs.GetInt(Prefix + "ReputationMigrated", 0) == 1)
+            if (PlayerPrefs.GetInt(Prefix + "ProgressionV3Migrated", 0) == 1)
                 return;
 
-            int rep = 0;
+            // Preserve existing case results/coins, but convert the old
+            // lifetime-reputation total into the first repeating bar.
             int completed = 0;
+            int oldLifetimeRep = 0;
 
             foreach (CaseDefinition entry in CaseDatabase.Cases)
             {
                 int result = CaseResult(entry.Id);
-                if (result == 0) continue;
+                if (result == 0)
+                    continue;
+
                 completed++;
-                rep += result > 0 ? 18 : 8;
+                oldLifetimeRep += result > 0 ? 18 : 8;
             }
 
-            PlayerPrefs.SetInt(Prefix + "Reputation", rep);
+            int initialTarget = 40;
+            int convertedProgress = Mathf.Min(initialTarget, oldLifetimeRep);
+
             PlayerPrefs.SetInt(Prefix + "CompletedCases", completed);
+            PlayerPrefs.SetInt(Prefix + "Reputation", convertedProgress);
+            PlayerPrefs.SetInt(Prefix + "RatingPosition",
+                PlayerPrefs.GetInt(Prefix + "RatingPosition", 50));
+            PlayerPrefs.SetInt(Prefix + "SpecialCasesCompleted",
+                PlayerPrefs.GetInt(Prefix + "SpecialCasesCompleted", 0));
+
+            if (convertedProgress >= initialTarget &&
+                PlayerPrefs.GetInt(Prefix + "SpecialActive", 0) == 0)
+            {
+                PlayerPrefs.SetInt(Prefix + "SpecialPending", 1);
+            }
+
+            PlayerPrefs.SetInt(Prefix + "ProgressionV3Migrated", 1);
+            // Keep this old flag too so older builds cannot recompute the value.
             PlayerPrefs.SetInt(Prefix + "ReputationMigrated", 1);
             PlayerPrefs.Save();
+        }
+
+        private static void MigrateLegacyReputation()
+        {
+            // Compatibility alias for older call sites.
+            MigrateProgressionV3();
         }
 
         private static void MigrateOldDecorationPurchases()
@@ -403,7 +492,9 @@ namespace LostAndFound.Cases
             foreach (string key in new[]
             {
                 "Coins", "DecorRefunded", "Reputation", "CompletedCases",
-                "ReputationMigrated"
+                "ReputationMigrated", "ProgressionV3Migrated",
+                "RatingPosition", "SpecialCasesCompleted",
+                "SpecialPending", "SpecialActive"
             })
                 PlayerPrefs.DeleteKey(Prefix + key);
 
