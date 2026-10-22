@@ -115,6 +115,22 @@ namespace LostAndFound.Match3
                 colorClearEnabled = level.ColorClearEnabled;
             }
 
+            if (BureauEconomy.SpecialCaseActive)
+            {
+                // Special clients are the skill check at the end of a
+                // reputation cycle: fewer moves and a larger collection goal.
+                maxMoves = Mathf.Max(12, maxMoves - 2);
+                targetCount += 4;
+
+                // By the time a special case appears, all field-created
+                // power-ups are available even if the underlying authored
+                // level was one of the early tutorial definitions.
+                bombsEnabled = true;
+                planesEnabled = true;
+                rocketsEnabled = true;
+                colorClearEnabled = true;
+            }
+
             pieces = new Match3Piece[width, height];
             targetType = Mathf.Clamp(targetType, 0, palette.Length - 1);
 
