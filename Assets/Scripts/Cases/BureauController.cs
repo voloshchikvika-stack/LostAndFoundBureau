@@ -21,6 +21,7 @@ namespace LostAndFound.Cases
             Archive,
             Collection,
             Reputation,
+            Ranking,
             ResetConfirm,
             Finished
         }
@@ -34,6 +35,7 @@ namespace LostAndFound.Cases
         private int archiveDetailIndex = -1;
         private int archivePage;
         private int collectionPage;
+        private int rankingPage;
         private int shopTab;
         private int equipmentPage;
         private int lastReward;
@@ -675,6 +677,9 @@ namespace LostAndFound.Cases
                     break;
                 case BureauMode.Reputation:
                     DrawReputation(scale);
+                    break;
+                case BureauMode.Ranking:
+                    DrawRanking(scale);
                     break;
                 case BureauMode.ResetConfirm:
                     DrawResetConfirm(scale);
@@ -1637,6 +1642,15 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(1678, 20, 200, 58, scale), "АРХИВ", button))
                 OpenOverlay(BureauMode.Archive);
 
+            if (GUI.Button(R(1485, 90, 175, 52, scale), "РЕЙТИНГ", button))
+            {
+                rankingPage = Mathf.Clamp(
+                    (BureauEconomy.BureauRatingPosition - 1) / 8,
+                    0,
+                    Mathf.Max(0, (BureauEconomy.RankingSize - 1) / 8));
+                OpenOverlay(BureauMode.Ranking);
+            }
+
             if (GUI.Button(R(1678, 153, 200, 52, scale),
                 "КОЛЛЕКЦИЯ", button))
                 OpenOverlay(BureauMode.Collection);
@@ -2245,6 +2259,148 @@ namespace LostAndFound.Cases
             if (GUI.Button(
                 R(755, 850, 410, 66, scale),
                 "ВЕРНУТЬСЯ В БЮРО",
+                button))
+            {
+                CloseOverlay();
+            }
+        }
+
+        private void DrawRanking(float scale)
+        {
+            GUI.DrawTexture(
+                new Rect(0f, 0f, Screen.width, Screen.height),
+                overlayTexture,
+                ScaleMode.StretchToFill);
+
+            DrawNineSlice(
+                R(300, 100, 1320, 880, scale),
+                speechBubbleTexture,
+                26);
+
+            Color ink = new Color(0.28f, 0.18f, 0.12f);
+            Color coffee = new Color(0.50f, 0.31f, 0.18f);
+            Color muted = new Color(0.47f, 0.39f, 0.31f);
+
+            GUIStyle title = LabelStyle(
+                31, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle heading = LabelStyle(
+                19, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle rowText = LabelStyle(
+                17, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
+            GUIStyle rowRank = LabelStyle(
+                18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee);
+            GUIStyle small = LabelStyle(
+                15, FontStyle.Normal, TextAnchor.MiddleCenter, scale, muted);
+            GUIStyle button = ButtonStyle(16, scale);
+
+            GUI.Label(
+                R(390, 135, 1140, 52, scale),
+                "ГОРОДСКОЙ РЕЙТИНГ БЮРО",
+                title);
+
+            GUI.Label(
+                R(415, 195, 1090, 42, scale),
+                $"Ваше место: №{BureauEconomy.BureauRatingPosition} · {BureauEconomy.PlayerBureauName}",
+                LabelStyle(21, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee));
+
+            GUI.Label(
+                R(415, 236, 1090, 35, scale),
+                $"После успешного особого дела: №{BureauEconomy.BureauRatingPosition} → №{BureauEconomy.NextRatingPositionOnSpecialSuccess}",
+                small);
+
+            int perPage = 8;
+            int maxPage = Mathf.Max(
+                0,
+                (BureauEconomy.RankingSize - 1) / perPage);
+            rankingPage = Mathf.Clamp(rankingPage, 0, maxPage);
+
+            int firstPosition = rankingPage * perPage + 1;
+
+            for (int i = 0; i < perPage; i++)
+            {
+                int position = firstPosition + i;
+                if (position > BureauEconomy.RankingSize)
+                    break;
+
+                float y = 300f + i * 70f;
+                bool player = position == BureauEconomy.BureauRatingPosition;
+
+                Rect row = R(410, y, 1100, 56, scale);
+                DrawNineSlice(
+                    row,
+                    player ? goodTexture : folderPaperTexture,
+                    16);
+
+                string medal = position == 1 ? "★ " :
+                               position == 2 ? "◆ " :
+                               position == 3 ? "● " : "";
+
+                GUIStyle nameStyle = LabelStyle(
+                    17,
+                    player ? FontStyle.Bold : FontStyle.Normal,
+                    TextAnchor.MiddleLeft,
+                    scale,
+                    player ? Color.white : ink);
+
+                GUIStyle positionStyle = LabelStyle(
+                    18,
+                    FontStyle.Bold,
+                    TextAnchor.MiddleCenter,
+                    scale,
+                    player ? Color.white : coffee);
+
+                GUI.Label(
+                    R(425, y + 8, 95, 40, scale),
+                    $"№{position}",
+                    positionStyle);
+
+                GUI.Label(
+                    R(535, y + 8, 850, 40, scale),
+                    medal + BureauEconomy.BureauNameAtPosition(position),
+                    nameStyle);
+
+                if (player)
+                {
+                    GUI.Label(
+                        R(1370, y + 8, 120, 40, scale),
+                        "ВЫ",
+                        LabelStyle(
+                            15,
+                            FontStyle.Bold,
+                            TextAnchor.MiddleCenter,
+                            scale,
+                            Color.white));
+                }
+            }
+
+            GUI.enabled = rankingPage > 0;
+            if (GUI.Button(
+                R(420, 885, 260, 58, scale),
+                "← ВЫШЕ",
+                button))
+            {
+                rankingPage--;
+            }
+            GUI.enabled = true;
+
+            GUI.Label(
+                R(785, 892, 350, 40, scale),
+                $"СТРАНИЦА {rankingPage + 1}/{maxPage + 1}",
+                small);
+
+            GUI.enabled = rankingPage < maxPage;
+            if (GUI.Button(
+                R(1240, 885, 260, 58, scale),
+                "НИЖЕ →",
+                button))
+            {
+                rankingPage++;
+            }
+            GUI.enabled = true;
+
+            if (GUI.Button(
+                R(760, 945, 400, 50, scale),
+                "ЗАКРЫТЬ РЕЙТИНГ",
                 button))
             {
                 CloseOverlay();
