@@ -205,6 +205,17 @@ namespace LostAndFound.Cases
             }
         }
 
+        public static int NextRatingPositionOnSpecialSuccess
+        {
+            get
+            {
+                int current = BureauRatingPosition;
+                int improvement = current > 25 ? 5 :
+                                  current > 10 ? 3 : 1;
+                return Mathf.Max(1, current - improvement);
+            }
+        }
+
         public static bool SpecialCasePending
         {
             get
