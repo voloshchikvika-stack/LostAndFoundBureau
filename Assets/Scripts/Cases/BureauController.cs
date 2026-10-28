@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 using LostAndFound.Mobile;
 
 namespace LostAndFound.Cases
@@ -35,7 +36,9 @@ namespace LostAndFound.Cases
         private int archiveDetailIndex = -1;
         private int archivePage;
         private int collectionPage;
-        private int rankingPage;
+        private Vector2 rankingScroll;
+        private bool rankingDragging;
+        private Vector2 rankingLastPointer;
         private int shopTab;
         private int equipmentPage;
         private int lastReward;
@@ -133,6 +136,8 @@ namespace LostAndFound.Cases
 
         private void Update()
         {
+            HandleRankingPointerScroll();
+
             float now = Time.realtimeSinceStartup;
 
             if (cluePopupVisible && now >= cluePopupUntil)
@@ -1649,10 +1654,18 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(1678, 216, 200, 52, scale),
                 "РЕЙТИНГ", button))
             {
-                rankingPage = Mathf.Clamp(
-                    (BureauEconomy.BureauRatingPosition - 1) / 5,
-                    0,
-                    Mathf.Max(0, (BureauEconomy.RankingSize - 1) / 5));
+                float rowHeight = 92f * scale;
+                float viewportHeight = R(0, 0, 1, 500, scale).height;
+                float contentHeight =
+                    BureauEconomy.RankingSize * rowHeight + 20f * scale;
+
+                // Open a little above the player's bureau, so the current
+                // position is visible immediately but there is context above it.
+                rankingScroll.y = Mathf.Clamp(
+                    (BureauEconomy.BureauRatingPosition - 3) * rowHeight,
+                    0f,
+                    Mathf.Max(0f, contentHeight - viewportHeight));
+
                 OpenOverlay(BureauMode.Ranking);
             }
 
@@ -2273,8 +2286,6 @@ namespace LostAndFound.Cases
                 overlayTexture,
                 ScaleMode.StretchToFill);
 
-            // Mobile landscape layout: only five large rows at once.
-            // Everything is intentionally oversized for thumb use and readability.
             DrawNineSlice(
                 R(390, 85, 1140, 900, scale),
                 speechBubbleTexture,
@@ -2312,24 +2323,38 @@ namespace LostAndFound.Cases
                 $"Следующая победа в особом деле: №{BureauEconomy.BureauRatingPosition} → №{BureauEconomy.NextRatingPositionOnSpecialSuccess}",
                 small);
 
-            const int perPage = 5;
-            int maxPage = Mathf.Max(
-                0,
-                (BureauEconomy.RankingSize - 1) / perPage);
+            Rect viewport = R(505, 300, 910, 500, scale);
+            float rowHeight = 92f * scale;
+            float contentWidth = viewport.width - 12f * scale;
+            float contentHeight =
+                BureauEconomy.RankingSize * rowHeight + 20f * scale;
 
-            rankingPage = Mathf.Clamp(rankingPage, 0, maxPage);
-            int firstPosition = rankingPage * perPage + 1;
+            rankingScroll.y = Mathf.Clamp(
+                rankingScroll.y,
+                0f,
+                Mathf.Max(0f, contentHeight - viewport.height));
 
-            for (int i = 0; i < perPage; i++)
+            rankingScroll = GUI.BeginScrollView(
+                viewport,
+                rankingScroll,
+                new Rect(0f, 0f, contentWidth, contentHeight),
+                false,
+                false);
+
+            for (int position = 1;
+                 position <= BureauEconomy.RankingSize;
+                 position++)
             {
-                int position = firstPosition + i;
-                if (position > BureauEconomy.RankingSize)
-                    break;
+                float y = 8f * scale + (position - 1) * rowHeight;
+                bool player =
+                    position == BureauEconomy.BureauRatingPosition;
 
-                float y = 315f + i * 98f;
-                bool player = position == BureauEconomy.BureauRatingPosition;
+                Rect row = new Rect(
+                    0f,
+                    y,
+                    contentWidth - 6f * scale,
+                    78f * scale);
 
-                Rect row = R(505, y, 910, 78, scale);
                 DrawNineSlice(
                     row,
                     player ? goodTexture : folderPaperTexture,
@@ -2343,7 +2368,11 @@ namespace LostAndFound.Cases
                 Color rankColor = player ? Color.white : coffee;
 
                 GUI.Label(
-                    R(530, y + 12, 110, 54, scale),
+                    new Rect(
+                        20f * scale,
+                        y + 12f * scale,
+                        110f * scale,
+                        54f * scale),
                     $"№{position}",
                     LabelStyle(
                         20,
@@ -2353,7 +2382,11 @@ namespace LostAndFound.Cases
                         rankColor));
 
                 GUI.Label(
-                    R(665, y + 12, 570, 54, scale),
+                    new Rect(
+                        145f * scale,
+                        y + 12f * scale,
+                        570f * scale,
+                        54f * scale),
                     medal + BureauEconomy.BureauNameAtPosition(position),
                     LabelStyle(
                         19,
@@ -2365,7 +2398,11 @@ namespace LostAndFound.Cases
                 if (player)
                 {
                     GUI.Label(
-                        R(1250, y + 12, 135, 54, scale),
+                        new Rect(
+                            735f * scale,
+                            y + 12f * scale,
+                            120f * scale,
+                            54f * scale),
                         "ВЫ",
                         LabelStyle(
                             16,
@@ -2376,44 +2413,96 @@ namespace LostAndFound.Cases
                 }
             }
 
-            GUI.enabled = rankingPage > 0;
-            if (GUI.Button(
-                R(505, 840, 270, 66, scale),
-                "← ВЫШЕ",
-                button))
-            {
-                rankingPage--;
-            }
-            GUI.enabled = true;
+            GUI.EndScrollView();
 
             GUI.Label(
-                R(790, 850, 340, 40, scale),
-                $"{rankingPage + 1} / {maxPage + 1}",
-                LabelStyle(
-                    15,
-                    FontStyle.Bold,
-                    TextAnchor.MiddleCenter,
-                    scale,
-                    muted));
-
-            GUI.enabled = rankingPage < maxPage;
-            if (GUI.Button(
-                R(1145, 840, 270, 66, scale),
-                "НИЖЕ →",
-                button))
-            {
-                rankingPage++;
-            }
-            GUI.enabled = true;
+                R(580, 812, 760, 30, scale),
+                "Проведите пальцем вверх или вниз, чтобы листать рейтинг",
+                small);
 
             if (GUI.Button(
-                R(760, 920, 400, 52, scale),
+                R(760, 885, 400, 62, scale),
                 "ЗАКРЫТЬ",
                 button))
             {
+                rankingDragging = false;
                 CloseOverlay();
             }
         }
+
+        private void HandleRankingPointerScroll()
+        {
+            if (mode != BureauMode.Ranking)
+            {
+                rankingDragging = false;
+                return;
+            }
+
+            float scale = MobileLayout.Scale;
+            Rect viewport = R(505, 300, 910, 500, scale);
+            float contentHeight =
+                BureauEconomy.RankingSize * 92f * scale + 20f * scale;
+            float maxScroll =
+                Mathf.Max(0f, contentHeight - viewport.height);
+
+            Vector2 pointer = Vector2.zero;
+            bool held = false;
+            bool pressedThisFrame = false;
+            bool releasedThisFrame = false;
+
+            if (Touchscreen.current != null)
+            {
+                var touch = Touchscreen.current.primaryTouch;
+                held = touch.press.isPressed;
+                pressedThisFrame = touch.press.wasPressedThisFrame;
+                releasedThisFrame = touch.press.wasReleasedThisFrame;
+                pointer = touch.position.ReadValue();
+                pointer.y = Screen.height - pointer.y;
+            }
+            else if (Mouse.current != null)
+            {
+                held = Mouse.current.leftButton.isPressed;
+                pressedThisFrame =
+                    Mouse.current.leftButton.wasPressedThisFrame;
+                releasedThisFrame =
+                    Mouse.current.leftButton.wasReleasedThisFrame;
+                pointer = Mouse.current.position.ReadValue();
+                pointer.y = Screen.height - pointer.y;
+            }
+
+            if (pressedThisFrame && viewport.Contains(pointer))
+            {
+                rankingDragging = true;
+                rankingLastPointer = pointer;
+            }
+
+            if (rankingDragging && held)
+            {
+                float deltaY = pointer.y - rankingLastPointer.y;
+                rankingScroll.y = Mathf.Clamp(
+                    rankingScroll.y - deltaY,
+                    0f,
+                    maxScroll);
+                rankingLastPointer = pointer;
+            }
+
+            if (releasedThisFrame)
+                rankingDragging = false;
+
+            // Desktop testing convenience: mouse wheel uses the same list.
+            if (Mouse.current != null)
+            {
+                float wheel = Mouse.current.scroll.ReadValue().y;
+                if (Mathf.Abs(wheel) > 0.01f)
+                {
+                    rankingScroll.y = Mathf.Clamp(
+                        rankingScroll.y - wheel * 0.45f,
+                        0f,
+                        maxScroll);
+                }
+            }
+        }
+
 
         private void StartMiniGame()
         {
