@@ -87,6 +87,75 @@ namespace LostAndFound.Cases
                 "Ставит цветной бонус на выбранную фишку.", 110)
         };
 
+        // Fictional city leaderboard. The player's bureau replaces the entry
+        // at its current ranking position and climbs after successful special cases.
+        private static readonly string[] cityBureaus =
+        {
+            "Агентство «Маяк»",
+            "Бюро «Северная звезда»",
+            "Детективная служба «Аргус»",
+            "Бюро «Красная нить»",
+            "Агентство «Ключ»",
+            "Бюро «Точный след»",
+            "Служба «Фонарь»",
+            "Агентство «Седьмой адрес»",
+            "Бюро «Городской след»",
+            "Служба «Верный маршрут»",
+            "Агентство «Параллель»",
+            "Бюро «Старый квартал»",
+            "Служба «Компас»",
+            "Бюро «Тихий свидетель»",
+            "Агентство «Ориентир»",
+            "Бюро «Дальний свет»",
+            "Служба «Перекрёсток»",
+            "Бюро «Знак на карте»",
+            "Агентство «Последний адрес»",
+            "Бюро «Час пик»",
+            "Служба «Найдено»",
+            "Бюро «Линия маршрута»",
+            "Агентство «Городские истории»",
+            "Бюро «Второй ключ»",
+            "Служба «Пятый переулок»",
+            "Бюро «Белая метка»",
+            "Агентство «Старая карта»",
+            "Бюро «Точка возврата»",
+            "Служба «Открытая дверь»",
+            "Бюро «След на мостовой»",
+            "Агентство «Забытый адрес»",
+            "Бюро «Ночной фонарь»",
+            "Служба «Поворот»",
+            "Бюро «Семь улиц»",
+            "Агентство «Потерянный маршрут»",
+            "Бюро «Городская записка»",
+            "Служба «Улика»",
+            "Бюро «Домой»",
+            "Агентство «Старый ключ»",
+            "Бюро «Третий звонок»",
+            "Служба «Возвращение»",
+            "Бюро «По следу»",
+            "Агентство «Нужный адрес»",
+            "Бюро «Находка»",
+            "Служба «Добрый знак»",
+            "Бюро «Зелёная дверь»",
+            "Агентство «Соседний квартал»",
+            "Бюро «Память вещей»",
+            "Служба «Вернуть домой»",
+            "Бюро «Последняя улика»"
+        };
+
+        public const string PlayerBureauName = "Бюро потерянных вещей";
+        public static int RankingSize => cityBureaus.Length;
+
+        public static string BureauNameAtPosition(int position)
+        {
+            int clamped = Mathf.Clamp(position, 1, cityBureaus.Length);
+
+            if (clamped == BureauRatingPosition)
+                return PlayerBureauName;
+
+            return cityBureaus[clamped - 1];
+        }
+
         public static IReadOnlyList<BureauUpgrade> Upgrades => rooms;
         public static IReadOnlyList<BureauUpgrade> Equipment => equipment;
         public static IReadOnlyList<BureauBooster> Boosters => boosters;
