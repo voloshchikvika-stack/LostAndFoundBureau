@@ -1642,18 +1642,19 @@ namespace LostAndFound.Cases
             if (GUI.Button(R(1678, 20, 200, 58, scale), "АРХИВ", button))
                 OpenOverlay(BureauMode.Archive);
 
-            if (GUI.Button(R(1485, 90, 175, 52, scale), "РЕЙТИНГ", button))
-            {
-                rankingPage = Mathf.Clamp(
-                    (BureauEconomy.BureauRatingPosition - 1) / 8,
-                    0,
-                    Mathf.Max(0, (BureauEconomy.RankingSize - 1) / 8));
-                OpenOverlay(BureauMode.Ranking);
-            }
-
             if (GUI.Button(R(1678, 153, 200, 52, scale),
                 "КОЛЛЕКЦИЯ", button))
                 OpenOverlay(BureauMode.Collection);
+
+            if (GUI.Button(R(1678, 216, 200, 52, scale),
+                "РЕЙТИНГ", button))
+            {
+                rankingPage = Mathf.Clamp(
+                    (BureauEconomy.BureauRatingPosition - 1) / 5,
+                    0,
+                    Mathf.Max(0, (BureauEconomy.RankingSize - 1) / 5));
+                OpenOverlay(BureauMode.Ranking);
+            }
 
             if (GUI.Button(R(1678, 90, 200, 52, scale),
                 "НОВАЯ ИГРА", button))
@@ -2272,48 +2273,51 @@ namespace LostAndFound.Cases
                 overlayTexture,
                 ScaleMode.StretchToFill);
 
+            // Mobile landscape layout: only five large rows at once.
+            // Everything is intentionally oversized for thumb use and readability.
             DrawNineSlice(
-                R(300, 100, 1320, 880, scale),
+                R(390, 85, 1140, 900, scale),
                 speechBubbleTexture,
-                26);
+                28);
 
             Color ink = new Color(0.28f, 0.18f, 0.12f);
             Color coffee = new Color(0.50f, 0.31f, 0.18f);
             Color muted = new Color(0.47f, 0.39f, 0.31f);
 
             GUIStyle title = LabelStyle(
-                31, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
-            GUIStyle heading = LabelStyle(
-                19, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle rowText = LabelStyle(
-                17, FontStyle.Bold, TextAnchor.MiddleLeft, scale, ink);
-            GUIStyle rowRank = LabelStyle(
-                18, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee);
+                30, FontStyle.Bold, TextAnchor.MiddleCenter, scale, ink);
+            GUIStyle placeStyle = LabelStyle(
+                21, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee);
             GUIStyle small = LabelStyle(
-                15, FontStyle.Normal, TextAnchor.MiddleCenter, scale, muted);
-            GUIStyle button = ButtonStyle(16, scale);
+                14, FontStyle.Normal, TextAnchor.MiddleCenter, scale, muted);
+            GUIStyle button = ButtonStyle(17, scale);
 
             GUI.Label(
-                R(390, 135, 1140, 52, scale),
+                R(470, 120, 980, 52, scale),
                 "ГОРОДСКОЙ РЕЙТИНГ БЮРО",
                 title);
 
-            GUI.Label(
-                R(415, 195, 1090, 42, scale),
-                $"Ваше место: №{BureauEconomy.BureauRatingPosition} · {BureauEconomy.PlayerBureauName}",
-                LabelStyle(21, FontStyle.Bold, TextAnchor.MiddleCenter, scale, coffee));
+            DrawNineSlice(
+                R(520, 185, 880, 86, scale),
+                folderPaperTexture,
+                20);
 
             GUI.Label(
-                R(415, 236, 1090, 35, scale),
-                $"После успешного особого дела: №{BureauEconomy.BureauRatingPosition} → №{BureauEconomy.NextRatingPositionOnSpecialSuccess}",
+                R(555, 196, 810, 34, scale),
+                $"ВАШЕ МЕСТО · №{BureauEconomy.BureauRatingPosition}",
+                placeStyle);
+
+            GUI.Label(
+                R(555, 232, 810, 28, scale),
+                $"Следующая победа в особом деле: №{BureauEconomy.BureauRatingPosition} → №{BureauEconomy.NextRatingPositionOnSpecialSuccess}",
                 small);
 
-            int perPage = 8;
+            const int perPage = 5;
             int maxPage = Mathf.Max(
                 0,
                 (BureauEconomy.RankingSize - 1) / perPage);
-            rankingPage = Mathf.Clamp(rankingPage, 0, maxPage);
 
+            rankingPage = Mathf.Clamp(rankingPage, 0, maxPage);
             int firstPosition = rankingPage * perPage + 1;
 
             for (int i = 0; i < perPage; i++)
@@ -2322,50 +2326,49 @@ namespace LostAndFound.Cases
                 if (position > BureauEconomy.RankingSize)
                     break;
 
-                float y = 300f + i * 70f;
+                float y = 315f + i * 98f;
                 bool player = position == BureauEconomy.BureauRatingPosition;
 
-                Rect row = R(410, y, 1100, 56, scale);
+                Rect row = R(505, y, 910, 78, scale);
                 DrawNineSlice(
                     row,
                     player ? goodTexture : folderPaperTexture,
-                    16);
+                    20);
 
                 string medal = position == 1 ? "★ " :
                                position == 2 ? "◆ " :
                                position == 3 ? "● " : "";
 
-                GUIStyle nameStyle = LabelStyle(
-                    17,
-                    player ? FontStyle.Bold : FontStyle.Normal,
-                    TextAnchor.MiddleLeft,
-                    scale,
-                    player ? Color.white : ink);
-
-                GUIStyle positionStyle = LabelStyle(
-                    18,
-                    FontStyle.Bold,
-                    TextAnchor.MiddleCenter,
-                    scale,
-                    player ? Color.white : coffee);
+                Color rowColor = player ? Color.white : ink;
+                Color rankColor = player ? Color.white : coffee;
 
                 GUI.Label(
-                    R(425, y + 8, 95, 40, scale),
+                    R(530, y + 12, 110, 54, scale),
                     $"№{position}",
-                    positionStyle);
+                    LabelStyle(
+                        20,
+                        FontStyle.Bold,
+                        TextAnchor.MiddleCenter,
+                        scale,
+                        rankColor));
 
                 GUI.Label(
-                    R(535, y + 8, 850, 40, scale),
+                    R(665, y + 12, 570, 54, scale),
                     medal + BureauEconomy.BureauNameAtPosition(position),
-                    nameStyle);
+                    LabelStyle(
+                        19,
+                        player ? FontStyle.Bold : FontStyle.Normal,
+                        TextAnchor.MiddleLeft,
+                        scale,
+                        rowColor));
 
                 if (player)
                 {
                     GUI.Label(
-                        R(1370, y + 8, 120, 40, scale),
+                        R(1250, y + 12, 135, 54, scale),
                         "ВЫ",
                         LabelStyle(
-                            15,
+                            16,
                             FontStyle.Bold,
                             TextAnchor.MiddleCenter,
                             scale,
@@ -2375,7 +2378,7 @@ namespace LostAndFound.Cases
 
             GUI.enabled = rankingPage > 0;
             if (GUI.Button(
-                R(420, 885, 260, 58, scale),
+                R(505, 840, 270, 66, scale),
                 "← ВЫШЕ",
                 button))
             {
@@ -2384,13 +2387,18 @@ namespace LostAndFound.Cases
             GUI.enabled = true;
 
             GUI.Label(
-                R(785, 892, 350, 40, scale),
-                $"СТРАНИЦА {rankingPage + 1}/{maxPage + 1}",
-                small);
+                R(790, 850, 340, 40, scale),
+                $"{rankingPage + 1} / {maxPage + 1}",
+                LabelStyle(
+                    15,
+                    FontStyle.Bold,
+                    TextAnchor.MiddleCenter,
+                    scale,
+                    muted));
 
             GUI.enabled = rankingPage < maxPage;
             if (GUI.Button(
-                R(1240, 885, 260, 58, scale),
+                R(1145, 840, 270, 66, scale),
                 "НИЖЕ →",
                 button))
             {
@@ -2399,8 +2407,8 @@ namespace LostAndFound.Cases
             GUI.enabled = true;
 
             if (GUI.Button(
-                R(760, 945, 400, 50, scale),
-                "ЗАКРЫТЬ РЕЙТИНГ",
+                R(760, 920, 400, 52, scale),
+                "ЗАКРЫТЬ",
                 button))
             {
                 CloseOverlay();
