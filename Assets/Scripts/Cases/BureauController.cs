@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.InputSystem;
 using LostAndFound.Mobile;
+using LostAndFound.Core;
 
 namespace LostAndFound.Cases
 {
@@ -136,6 +137,12 @@ namespace LostAndFound.Cases
 
         private void Update()
         {
+            if (GameSettingsManager.IsSettingsOpen)
+            {
+                rankingDragging = false;
+                return;
+            }
+
             HandleRankingPointerScroll();
 
             float now = Time.realtimeSinceStartup;
@@ -617,14 +624,14 @@ namespace LostAndFound.Cases
 
             if (mode == BureauMode.Room || mode == BureauMode.MiniGame)
             {
-                GUI.enabled = !cluePopupVisible && !reactionVisible;
+                GUI.enabled = !cluePopupVisible && !reactionVisible && !GameSettingsManager.IsSettingsOpen;
                 DrawRoomScene(scale);
                 GUI.enabled = true;
                 return;
             }
 
             DrawOffice(scale);
-            bool canInteract = !cluePopupVisible && !reactionVisible;
+            bool canInteract = !cluePopupVisible && !reactionVisible && !GameSettingsManager.IsSettingsOpen;
             GUI.enabled = canInteract;
             DrawTopBar(scale);
 
@@ -1488,6 +1495,12 @@ namespace LostAndFound.Cases
             reactionRatingBefore = BureauEconomy.BureauRatingPosition;
             lastReward = BureauEconomy.CompleteCase(currentCase.Id, correct);
             reactionRatingAfter = BureauEconomy.BureauRatingPosition;
+
+            if (correct)
+                GameSettingsManager.PlayCaseComplete();
+            else
+                GameSettingsManager.PlayInvalid();
+
             reactionVisible = true;
             reactionWasCorrect = correct;
             reactionStage = 0;
