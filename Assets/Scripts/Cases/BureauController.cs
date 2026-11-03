@@ -923,6 +923,7 @@ namespace LostAndFound.Cases
 
         private void BeginSearch()
         {
+            GameSettingsManager.PlayUiClick();
             CaseSession.MarkIntroSeen();
             OpenSearchPrep();
         }
@@ -1689,12 +1690,14 @@ namespace LostAndFound.Cases
 
         private void OpenOverlay(BureauMode next)
         {
+            GameSettingsManager.PlayUiClick();
             previousMode = mode;
             mode = next;
         }
 
         private void CloseOverlay()
         {
+            GameSettingsManager.PlayUiClick();
             mode = previousMode;
         }
 
@@ -2522,6 +2525,7 @@ namespace LostAndFound.Cases
             if (currentCase == null || !CaseSession.MiniGameReady)
                 return;
 
+            GameSettingsManager.PlayUiClick();
             activeRoomId = currentCase.RoomId;
             roomReturnMode = BureauMode.SearchPrep;
             temporaryRoomAccess = false;
