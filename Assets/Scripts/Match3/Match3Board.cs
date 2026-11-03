@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using LostAndFound.Cases;
+using LostAndFound.Core;
 using LostAndFound.Mobile;
 
 namespace LostAndFound.Match3
@@ -190,6 +191,12 @@ namespace LostAndFound.Match3
 
         private void Update()
         {
+            if (GameSettingsManager.IsSettingsOpen)
+            {
+                pointerGestureActive = false;
+                return;
+            }
+
             if (inputLocked || gameEnded)
             {
                 pointerGestureActive = false;
@@ -582,6 +589,7 @@ namespace LostAndFound.Match3
 
             if (firstWasBonus && secondWasBonus)
             {
+                GameSettingsManager.PlayBonus();
                 moves++;
                 yield return ResolveBonusCombination(
                     first, second, firstKind, secondKind);
@@ -591,6 +599,7 @@ namespace LostAndFound.Match3
 
             if (firstWasBonus || secondWasBonus)
             {
+                GameSettingsManager.PlayBonus();
                 moves++;
 
                 HashSet<Match3Piece> affected = new HashSet<Match3Piece>();
@@ -621,6 +630,7 @@ namespace LostAndFound.Match3
                 (planeSquare == null || planeSquare.Count == 0))
             {
                 yield return SwapAndAnimate(first, second, swapDuration);
+                GameSettingsManager.PlayInvalid();
                 inputLocked = false;
                 yield break;
             }
@@ -667,6 +677,7 @@ namespace LostAndFound.Match3
 
             if (bonusHost != null && bonusKind != Match3BonusKind.None)
             {
+                GameSettingsManager.PlayBonus();
                 ClearMatches(clearSet, bonusHost);
                 bonusHost.SetBonus(
                     bonusKind,
@@ -690,6 +701,7 @@ namespace LostAndFound.Match3
         {
             inputLocked = true;
             DeselectCurrent();
+            GameSettingsManager.PlayBonus();
             moves++;
 
             HashSet<Match3Piece> affected = new HashSet<Match3Piece>();
@@ -753,6 +765,8 @@ namespace LostAndFound.Match3
 
         private void ClearMatches(HashSet<Match3Piece> matches, Match3Piece preserve = null)
         {
+            int cleared = 0;
+
             foreach (Match3Piece piece in matches)
             {
                 if (piece == null || piece == preserve)
@@ -769,8 +783,12 @@ namespace LostAndFound.Match3
                 if (piece.Type == targetType)
                     collectedTarget++;
 
+                cleared++;
                 Destroy(piece.gameObject);
             }
+
+            if (cleared > 0)
+                GameSettingsManager.PlayMatch();
         }
 
         private IEnumerator ResolveBonusCombination(
@@ -1456,12 +1474,14 @@ namespace LostAndFound.Match3
 
             if (levelWon)
             {
+                GameSettingsManager.PlayWin();
                 yield return new WaitForSeconds(1.8f);
                 CaseSession.CompleteCurrentSearch();
                 SceneManager.LoadScene("SampleScene");
             }
             else
             {
+                GameSettingsManager.PlayLose();
                 yield return new WaitForSeconds(2.0f);
                 SceneManager.LoadScene("Match3");
             }
