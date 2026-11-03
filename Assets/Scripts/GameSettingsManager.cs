@@ -158,15 +158,40 @@ namespace LostAndFound.Core
 
         private void ApplySavedSettings()
         {
-            if (MusicEnabled)
+            if (musicSource != null)
             {
-                if (musicSource.clip != null && !musicSource.isPlaying)
-                    musicSource.Play();
+                if (MusicEnabled)
+                {
+                    if (musicSource.clip != null && !musicSource.isPlaying)
+                        musicSource.Play();
+                }
+                else
+                {
+                    musicSource.Stop();
+                }
             }
-            else
+
+            if (!SoundEnabled && sfxSource != null)
+                sfxSource.Stop();
+        }
+
+        private void ApplyPendingSettingsImmediately()
+        {
+            if (musicSource != null)
             {
-                musicSource.Stop();
+                if (pendingMusic)
+                {
+                    if (musicSource.clip != null && !musicSource.isPlaying)
+                        musicSource.Play();
+                }
+                else
+                {
+                    musicSource.Stop();
+                }
             }
+
+            if (!pendingSound && sfxSource != null)
+                sfxSource.Stop();
         }
 
         private void OpenSettings()
@@ -195,7 +220,15 @@ namespace LostAndFound.Core
         private void CloseWithoutSaving()
         {
             settingsOpen = false;
-            PlayUiClick();
+
+            // Restore the last saved state if the player closes with X.
+            pendingMusic = MusicEnabled;
+            pendingSound = SoundEnabled;
+            pendingVibration = VibrationEnabled;
+            ApplySavedSettings();
+
+            if (SoundEnabled)
+                PlayUiClick();
         }
 
         private void OnGUI()
@@ -303,8 +336,16 @@ namespace LostAndFound.Core
             GUIStyle invisible = new GUIStyle(GUIStyle.none);
             if (GUI.Button(toggle, GUIContent.none, invisible))
             {
+                bool wasSoundOn = pendingSound;
                 value = !value;
-                PlayUiClick();
+
+                // Preview every change immediately. Music stops/starts at once,
+                // and disabling sounds cuts any currently playing SFX.
+                ApplyPendingSettingsImmediately();
+
+                // Do not play a click after the player has just turned sound off.
+                if (pendingSound && wasSoundOn)
+                    PlayUiClick();
             }
         }
 
