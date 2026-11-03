@@ -1708,6 +1708,10 @@ namespace LostAndFound.Match3
             if (hudCardTexture == null || pieceTextures == null)
                 return;
 
+            bool settingsBlocked = GameSettingsManager.IsSettingsOpen;
+            if (settingsBlocked)
+                GUI.enabled = false;
+
             float scale = MobileLayout.Scale;
             Rect safe = MobileLayout.SafeAreaGui;
 
@@ -1760,6 +1764,9 @@ namespace LostAndFound.Match3
                 DrawResultOverlay(scale);
             else
                 DrawInventory(scale);
+
+            if (settingsBlocked)
+                GUI.enabled = true;
         }
 
         private static float InventoryScale()
