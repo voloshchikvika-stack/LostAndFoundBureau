@@ -1,4 +1,5 @@
 using UnityEngine;
+using LostAndFound.Core;
 
 namespace LostAndFound.Cases
 {
@@ -191,6 +192,7 @@ namespace LostAndFound.Cases
             {
                 miniGameCompleted = true;
                 Save();
+                GameSettingsManager.PlayPuzzleSuccess();
             }
         }
 
