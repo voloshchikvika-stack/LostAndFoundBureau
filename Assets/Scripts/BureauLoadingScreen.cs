@@ -11,7 +11,8 @@ namespace LostAndFound.UI
     /// </summary>
     public sealed class BureauLoadingScreen : MonoBehaviour
     {
-        private const string DestinationScene = "SampleScene";
+        private const string BureauScene = "SampleScene";
+        private const string ProfileScene = "ProfileSetup";
         private const float MinimumVisibleSeconds = 1.2f;
         private AsyncOperation operation;
         private float progress;
@@ -43,13 +44,15 @@ namespace LostAndFound.UI
             // Let Unity render the loading screen before starting the next scene.
             yield return null;
 
-            if (!Application.CanStreamedLevelBeLoaded(DestinationScene))
+            string destination = PlayerProfile.IsCreated ? BureauScene : ProfileScene;
+
+            if (!Application.CanStreamedLevelBeLoaded(destination))
             {
-                error = "Scene SampleScene is not in Build Settings.";
+                error = "Scene " + destination + " is not in Build Settings. Run Install Loading Screen.";
                 yield break;
             }
 
-            operation = SceneManager.LoadSceneAsync(DestinationScene, LoadSceneMode.Single);
+            operation = SceneManager.LoadSceneAsync(destination, LoadSceneMode.Single);
             if (operation == null)
             {
                 error = "Could not start scene loading.";
