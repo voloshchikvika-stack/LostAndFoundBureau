@@ -233,6 +233,11 @@ namespace LostAndFound.Core
 
         private void OnGUI()
         {
+            // The persistent settings manager is active even during startup.
+            // Only show its gear and dialog after the bureau scene has loaded.
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "LoadingScene")
+                return;
+
             GUI.depth = -1000;
 
             float scale = MobileLayout.Scale;
