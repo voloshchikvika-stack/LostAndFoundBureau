@@ -235,7 +235,8 @@ namespace LostAndFound.Core
         {
             // The persistent settings manager is active even during startup.
             // Only show its gear and dialog after the bureau scene has loaded.
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "LoadingScene")
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "LoadingScene" ||
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "ProfileSetup")
                 return;
 
             GUI.depth = -1000;
