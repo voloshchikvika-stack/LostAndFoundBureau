@@ -20,6 +20,21 @@ namespace LostAndFound.UI
 
         private void Awake()
         {
+            // The loading scene is intentionally UI-only. Unity still needs a
+            // rendering camera, otherwise Game View displays "No cameras rendering".
+            // Create it automatically so already-installed scenes are repaired too.
+            if (GetComponentInChildren<Camera>() == null)
+            {
+                GameObject cameraObject = new GameObject("LoadingCamera");
+                cameraObject.transform.SetParent(transform, false);
+                Camera camera = cameraObject.AddComponent<Camera>();
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = new Color(0.16f, 0.11f, 0.09f);
+                camera.cullingMask = 0;
+                camera.orthographic = true;
+                camera.depth = -100;
+            }
+
             background = Resources.Load<Texture2D>("Loading/BureauStreet");
         }
 
