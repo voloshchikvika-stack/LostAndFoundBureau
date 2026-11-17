@@ -110,11 +110,6 @@ namespace LostAndFound.UI
             // Legible overlay for any photo, including a brightly lit exterior.
             RectColor(new Rect(0, h * 0.77f, w, h * 0.23f), new Color(0.13f, 0.085f, 0.055f, 0.80f));
 
-            float titleSize = Mathf.Clamp(Mathf.Min(w * 0.041f, h * 0.083f), 22f, 57f);
-            GUI.Label(new Rect(w * 0.06f, h * 0.035f, w * 0.88f, h * 0.19f),
-                "БЮРО ПОТЕРЯННЫХ ВЕЩЕЙ",
-                TextStyle(Mathf.RoundToInt(titleSize), FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.94f, 0.81f)));
-
             float barW = Mathf.Min(w * 0.72f, 850f);
             float barH = Mathf.Clamp(h * 0.032f, 14f, 35f);
             Rect bar = new Rect((w - barW) / 2f, h * 0.89f, barW, barH);
