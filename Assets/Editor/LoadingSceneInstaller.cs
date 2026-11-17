@@ -28,7 +28,7 @@ namespace LostAndFound.EditorTools
 
             string previousScene = SceneManager.GetActiveScene().path;
             EnsureScene<BureauLoadingScreen>(LoadingPath, "BureauLoadingScreen");
-            EnsureScene<PlayerProfileSetup>(ProfilePath, "PlayerProfileSetup");
+            EnsureProfileScene();
 
             List<EditorBuildSettingsScene> scenes = new List<EditorBuildSettingsScene>
             {
@@ -70,6 +70,33 @@ namespace LostAndFound.EditorTools
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             new GameObject(objectName).AddComponent<T>();
             EditorSceneManager.SaveScene(scene, path);
+        }
+
+        // Replace the unreliable legacy IMGUI profile renderer with a uGUI Canvas.
+        // Safe to re-run: the inspector scene is saved with exactly one component.
+        private static void EnsureProfileScene()
+        {
+            Scene scene;
+            if (File.Exists(ProfilePath))
+                scene = EditorSceneManager.OpenScene(ProfilePath, OpenSceneMode.Single);
+            else
+                scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            PlayerProfileSetup[] oldScreens = Object.FindObjectsByType<PlayerProfileSetup>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (PlayerProfileSetup old in oldScreens)
+                Object.DestroyImmediate(old);
+
+            ProfileCanvasScreen[] newScreens = Object.FindObjectsByType<ProfileCanvasScreen>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            if (newScreens.Length == 0)
+                new GameObject("ProfileCanvasScreen").AddComponent<ProfileCanvasScreen>();
+            else
+                for (int i = 1; i < newScreens.Length; i++)
+                    Object.DestroyImmediate(newScreens[i]);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ProfilePath);
         }
 
         [MenuItem("LostAndFound/Test/Show Profile Setup Again")]
