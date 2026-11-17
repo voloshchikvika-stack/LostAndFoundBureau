@@ -60,7 +60,6 @@ namespace LostAndFound.UI
                 SceneManager.LoadScene(BureauScene);
                 return;
             }
-            GUI.FocusControl("PlayerName");
         }
 
         private void OnDestroy()
